@@ -1,4 +1,4 @@
-# Buckshot Roulette Multiplayer — Regular Game Rules
+# Buckshot Roulette Multiplayer — Regular Game Rules 
 
 This guide explains how a regular **Buckshot Roulette Multiplayer** game works: turn flow, shotgun mechanics, shells, items, death conditions, and win conditions.
 

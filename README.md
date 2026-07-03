@@ -1,2 +1,41 @@
 # buckshot-roulette-irl
-recreation of the buckshot roulette using a combination of electronics
+recreation of the buckshot roulette using a combination of electronics for Fallout in Shenzhen, this ~~lighthearded~~ very serious project makes sense within the competition's lore.
+
+# Context:
+
+The world is ending!!! Resources are scarce and there are too many people (🙁) for shelters.
+
+What is the fairest way to reduce population numbers you may ask? By **gambling**, but more fair kind of mostly I mean technically.
+
+Let's make killing each other a mostly lighthearted game (yay!) by referencing the hit videogame _Buckshot Roulette_.
+
+![soupshot_roulette](images/soupshot_roulette.jpg)
+
+## Hardware used:
+
+- ESP32-S3 N16R8.
+- 2.4" TFT Display.
+- Mifrare ultralight NFC stickers (40 units for this project).
+- Android smartphones with a chromium-based web browser to interact with NFC.
+- Button (Arcade Button)
+
+
+## Game flow 
+
+All players connect to the shotgun (esp32 AP) which is randomized. After connecting, the players will be asked to "sign in" by opening a website and with a camera and be asked to scan the qr code in the shotgun's display. (the first user will be the _admin_ and will be able to set settings like max number of bullets, ratios, etc.). After all players have registered, and the settings are set, the _admin_ will start the game.
+
+If it's the first round, the shotgun will randomly select a player to be the "shooter", if not, the shooter will be the one who's turn should be according to their previous round.
+All players get the number of items indicated by each phone, and THEY MUST SCAN THEM to be able to use them (safety measure).
+After all users have scanned all their items, the round will start.
+
+The user who is the shooter will be prompted take action by scanning an item or shooting. If they scan an item, it will be deducted from their inventory, and will be used.
+Item actions:
+- Adrenaline: select a player who you want to steal from, grab an item from their inventory and scan it. Then use it immediately. (You cannot steal another adrenaline)
+- Beer: eject the current shell without shooting it and keep your turn. (you'll be shown the type of shell it was (blank of live))
+- Burner Phone: reveal the type/position of a random future shell.
+- Cigarette Pack: heal 1 life.
+- Hand Saw: next live shot deals 2 damage instead of 1. (cannot be stacked with other hand saws)
+- Inverter: flip the current shell: live becomes blank, blank becomes live. (It won't)
+- Jammer: choose a player; they skip their next turn.
+- Magnifying Glass: reveal the current shell.
+- Remote: reverse the turn order.
