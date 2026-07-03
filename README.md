@@ -29,7 +29,7 @@ All players get the number of items indicated by each phone, and THEY MUST SCAN 
 After all users have scanned all their items, the round will start.
 
 The user who is the shooter will be prompted take action by scanning an item or shooting. If they scan an item, it will be deducted from their inventory, and will be used.
-Item actions:
+Possible actions:
 - Adrenaline: select a player who you want to steal from, grab an item from their inventory and scan it. Then use it immediately. (You cannot steal another adrenaline)
 - Beer: eject the current shell without shooting it and keep your turn. (you'll be shown the type of shell it was (blank of live))
 - Burner Phone: reveal the type/position of a random future shell.
@@ -39,3 +39,7 @@ Item actions:
 - Jammer: choose a player; they skip their next turn.
 - Magnifying Glass: reveal the current shell.
 - Remote: reverse the turn order.
+- Shot: You deal damage to a user if you shoot a live shell. If you shoot a blank shell, you don't make damage. If you shoot yourself with a blank round, you continue playing, any other option will make you pass turn.
+
+When the player uses an item, if needed, the phone of the user who used the item will show an apropiate menu of options, e.g. select target player, or watever.
+
