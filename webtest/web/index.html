@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="screen-orientation" content="landscape">
+  <meta name="x5-orientation" content="landscape">
+  <title>Buckshot IRL</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./app.css">
+</head>
+<body>
+  <main>
+    <section class="hud" aria-live="polite">
+      <div class="topline">
+        <div>
+          <p class="kicker">live terminal</p>
+          <h1 id="turnTitle">Syncing</h1>
+        </div>
+        <button id="refresh" type="button" aria-label="Refresh table state">↻</button>
+      </div>
+
+      <div id="life" class="life-pack" aria-label="Life meter"></div>
+      <div id="hudActions" class="hud-actions hidden">
+        <button id="shot" type="button">Shot</button>
+        <button id="debugToggle" type="button">Debug</button>
+      </div>
+      <p id="session" class="phase">connecting</p>
+      <p id="message" class="message"></p>
+    </section>
+  </main>
+
+  <div id="targetDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="targetTitle">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h2 id="targetTitle">Shot target</h2>
+        <button id="closeTarget" type="button">Close</button>
+      </div>
+      <div id="targets" class="target-grid"></div>
+    </div>
+  </div>
+
+  <div id="debugPanel" class="debug-panel hidden">
+    <div class="popup-head">
+      <h2>Debug NFC</h2>
+      <button id="closeDebug" type="button">Close</button>
+    </div>
+    <div id="inventory" class="inventory-grid"></div>
+    <button id="scan" class="scan-button" type="button">Scan tag</button>
+    <p id="nfc" class="message"></p>
+  </div>
+
+  <div class="rotate-lock" role="status" aria-live="polite">
+    <div class="rotate-card">
+      <div class="rotate-icon" aria-hidden="true">▯</div>
+      <h2>Rotate device</h2>
+      <p>This terminal runs in landscape.</p>
+    </div>
+  </div>
+
+  <script src="./app.js"></script>
+</body>
+</html>
