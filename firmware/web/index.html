@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Buckshot IRL</title>
+  <link rel="stylesheet" href="/app.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Buckshot IRL</h1>
+        <p id="session">Connecting</p>
+      </div>
+      <button id="refresh" type="button">Refresh</button>
+    </header>
+
+    <section id="register" class="panel">
+      <h2>Join</h2>
+      <label>Name <input id="name" maxlength="15" autocomplete="off"></label>
+      <button id="join" type="button">Join game</button>
+    </section>
+
+    <section id="admin" class="panel hidden">
+      <h2>Admin</h2>
+      <div class="grid">
+        <label>Lives <input id="lives" type="number" min="1" max="9" value="3"></label>
+        <label>Shells <input id="shells" type="number" min="2" max="8" value="6"></label>
+        <label>Live shells <input id="live" type="number" min="1" max="7" value="3"></label>
+        <label>Items/player <input id="items" type="number" min="0" max="8" value="2"></label>
+      </div>
+      <div class="row">
+        <button id="saveSetup" type="button">Save setup</button>
+        <button id="start" type="button">Start round</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+      <h3>NFC writer</h3>
+      <p id="writeMode"></p>
+      <button id="toggleWriteMode" type="button">Toggle NFC write mode</button>
+      <div class="row wrap" id="writer"></div>
+      <p id="writeStatus"></p>
+    </section>
+
+    <section id="status" class="panel">
+      <h2>Table</h2>
+      <div id="players"></div>
+      <div id="shotgun"></div>
+      <p id="message"></p>
+    </section>
+
+    <section id="actions" class="panel hidden">
+      <h2>Actions</h2>
+      <div id="targets" class="row wrap"></div>
+      <div class="row wrap">
+        <button id="armSelf" type="button">Arm self shot</button>
+        <button id="armTarget" type="button">Arm target shot</button>
+      </div>
+      <h3>Items</h3>
+      <div id="inventory" class="row wrap"></div>
+      <h3>NFC scanner</h3>
+      <button id="scan" type="button">Scan item tag</button>
+      <p id="nfc"></p>
+    </section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
