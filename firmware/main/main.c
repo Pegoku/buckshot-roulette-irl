@@ -1561,6 +1561,7 @@ static void register_routes(httpd_handle_t server)
     register_get(server, "/join/*", join_handler);
     register_get(server, "/app.css", static_handler);
     register_get(server, "/app.js", static_handler);
+    register_get(server, "/fonts/*", static_handler);
     register_get(server, "/api/state", api_state);
     register_post(server, "/api/register", api_register);
     register_post(server, "/api/setup", api_setup);

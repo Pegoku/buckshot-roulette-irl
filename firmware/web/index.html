@@ -3,17 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="screen-orientation" content="landscape">
+  <meta name="x5-orientation" content="landscape">
   <title>Buckshot IRL</title>
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
   <main>
-    <header>
+    <header class="topline">
       <div>
+        <p class="kicker">live terminal</p>
         <h1>Buckshot IRL</h1>
-        <p id="session">Connecting</p>
+        <p id="session" class="phase">Connecting</p>
       </div>
-      <button id="refresh" type="button">Refresh</button>
+      <button id="refresh" type="button" aria-label="Refresh table state">Refresh</button>
     </header>
 
     <section id="register" class="panel">
@@ -49,7 +52,7 @@
       <h2>Table</h2>
       <div id="players"></div>
       <div id="shotgun"></div>
-      <p id="message"></p>
+      <p id="message" class="message"></p>
     </section>
 
     <section id="actions" class="panel hidden">
@@ -69,12 +72,21 @@
   </main>
   <div id="nfcWriteDialog" class="overlay hidden" role="dialog" aria-modal="true">
     <div class="modal">
-      <h2>Write NFC Tag</h2>
+      <div class="popup-head">
+        <h2>Write NFC Tag</h2>
+        <button id="cancelWrite" type="button">Cancel</button>
+      </div>
       <p id="writePrompt">Choose an item to write.</p>
       <div class="row wrap" id="writer"></div>
       <div class="tag-graphic" aria-hidden="true"></div>
       <p id="writeProgress"></p>
-      <button id="cancelWrite" type="button">Cancel</button>
+    </div>
+  </div>
+  <div class="rotate-lock" role="status" aria-live="polite">
+    <div class="rotate-card">
+      <div class="rotate-icon" aria-hidden="true">▯</div>
+      <h2>Rotate device</h2>
+      <p>This terminal runs best in landscape.</p>
     </div>
   </div>
   <script src="/app.js"></script>
