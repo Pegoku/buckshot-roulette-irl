@@ -68,19 +68,20 @@ body::after {
 
 body::before {
   background:
-    repeating-linear-gradient(0deg, rgba(0, 0, 0, .24) 0 1px, rgba(0, 255, 102, .045) 1px 3px),
-    repeating-linear-gradient(90deg, var(--crt-red) 0 1px, rgba(0, 255, 102, .06) 1px 2px, var(--crt-blue) 2px 3px);
-  background-size: 100% 4px, 6px 100%;
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, .28) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, .06), rgba(0, 255, 102, .025), rgba(0, 0, 255, .06));
+  background-size: 100% 3px, 4px 100%;
   mix-blend-mode: screen;
-  opacity: .72;
-  animation: scanRoll 7s linear infinite, phosphorFlicker .13s steps(2, end) infinite;
+  opacity: .78;
+  animation: scanRoll 9s linear infinite, phosphorFlicker .12s steps(2, end) infinite;
 }
 
 body::after {
   background:
+    linear-gradient(rgba(18, 16, 16, .08), rgba(18, 16, 16, .08)),
     radial-gradient(ellipse at center, transparent 46%, rgba(0, 0, 0, .28) 72%, rgba(0, 0, 0, .72) 100%),
     linear-gradient(90deg, rgba(255, 255, 255, .035), transparent 14%, transparent 86%, rgba(255, 255, 255, .025));
-  animation: exposureFlicker 2.8s steps(12, end) infinite;
+  animation: screenFlicker .15s infinite, exposureFlicker 2.8s steps(12, end) infinite;
 }
 
 main {
@@ -151,6 +152,7 @@ button {
     -1px 0 var(--crt-red),
     1px 0 var(--crt-blue),
     0 0 7px rgba(0, 255, 102, .55);
+  animation: textShadow 1.6s infinite;
 }
 
 button:hover:not(:disabled),
@@ -214,6 +216,7 @@ button:disabled {
   font-size: 12px;
   font-weight: 400;
   text-transform: uppercase;
+  animation: textShadow 1.6s infinite;
 }
 
 .kicker {
@@ -232,6 +235,7 @@ h1 {
     2px 0 var(--crt-blue),
     0 0 12px rgba(0, 255, 102, .7),
     0 0 28px rgba(0, 255, 102, .22);
+  animation: textShadow 1.6s infinite;
 }
 
 h1.hot {
@@ -247,6 +251,7 @@ h2 {
     -1px 0 var(--crt-red),
     1px 0 var(--crt-blue),
     0 0 7px rgba(0, 255, 102, .45);
+  animation: textShadow 1.6s infinite;
 }
 
 #refresh {
@@ -518,7 +523,63 @@ h2 {
   }
 
   100% {
-    background-position: 0 28px, 6px 0;
+    background-position: 0 24px, 4px 0;
+  }
+}
+
+@keyframes textShadow {
+  0% {
+    text-shadow: .45px 0 1px rgba(0, 30, 255, .55), -.45px 0 1px rgba(255, 0, 80, .42), 0 0 7px rgba(0, 255, 102, .5);
+  }
+
+  15% {
+    text-shadow: 1.15px 0 1px rgba(0, 30, 255, .5), -1.15px 0 1px rgba(255, 0, 80, .38), 0 0 8px rgba(0, 255, 102, .62);
+  }
+
+  30% {
+    text-shadow: .25px 0 1px rgba(0, 30, 255, .45), -.25px 0 1px rgba(255, 0, 80, .35), 0 0 6px rgba(0, 255, 102, .48);
+  }
+
+  45% {
+    text-shadow: 1.75px 0 1px rgba(0, 30, 255, .58), -1.75px 0 1px rgba(255, 0, 80, .44), 0 0 10px rgba(0, 255, 102, .68);
+  }
+
+  60% {
+    text-shadow: .7px 0 1px rgba(0, 30, 255, .5), -.7px 0 1px rgba(255, 0, 80, .38), 0 0 7px rgba(0, 255, 102, .56);
+  }
+
+  75% {
+    text-shadow: 1.35px 0 1px rgba(0, 30, 255, .55), -1.35px 0 1px rgba(255, 0, 80, .42), 0 0 9px rgba(0, 255, 102, .64);
+  }
+
+  100% {
+    text-shadow: .45px 0 1px rgba(0, 30, 255, .55), -.45px 0 1px rgba(255, 0, 80, .42), 0 0 7px rgba(0, 255, 102, .5);
+  }
+}
+
+@keyframes screenFlicker {
+  0% {
+    opacity: .18;
+  }
+
+  20% {
+    opacity: .06;
+  }
+
+  40% {
+    opacity: .2;
+  }
+
+  60% {
+    opacity: .04;
+  }
+
+  80% {
+    opacity: .15;
+  }
+
+  100% {
+    opacity: .1;
   }
 }
 
@@ -646,7 +707,13 @@ h2 {
   body::after,
   main,
   main::before,
-  main::after {
+  main::after,
+  button,
+  h1,
+  h2,
+  .kicker,
+  .phase,
+  .message {
     animation: none;
   }
 }
