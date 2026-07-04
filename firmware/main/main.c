@@ -15,6 +15,7 @@
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
+#include "esp_timer.h"
 #include "esp_spiffs.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
@@ -47,6 +48,9 @@
 #define MAX_ITEMS 9
 #define MAX_TOKENS 40
 #define BUTTON_POLL_DELAY_TICKS 1
+#define PLAYER_TIMEOUT_MS 20000
+#define PLAYER_TIMEOUT_RETRY_MS 2000
+#define PLAYER_TIMEOUT_RETRIES 3
 
 #define COLOR_BLACK 0x0000
 #define COLOR_WHITE 0xffff
@@ -83,6 +87,10 @@ typedef struct {
     bool skip_turn;
     uint8_t id;
     uint8_t lives;
+    uint8_t timeout_strikes;
+    uint32_t join_order;
+    uint32_t last_seen_ms;
+    uint32_t next_timeout_ms;
     char name[MAX_NAME_LEN + 1];
     uint8_t inv[MAX_ITEMS];
 } player_t;
@@ -99,6 +107,7 @@ typedef struct {
     phase_t phase;
     uint8_t player_count;
     uint8_t admin_id;
+    uint32_t next_join_order;
     uint8_t current;
     int8_t direction;
     int8_t armed_target;
@@ -150,6 +159,15 @@ static const uint8_t digit_font[10][5] = {
 static const char *item_names[MAX_ITEMS] = {
     "adrenaline", "beer", "burner", "cigarette", "saw", "inverter", "jammer", "glass", "remote",
 };
+
+static uint8_t alive_count(void);
+static int next_player_from(int start);
+static void set_message(const char *fmt, ...);
+
+static uint32_t now_ms(void)
+{
+    return (uint32_t)(esp_timer_get_time() / 1000ULL);
+}
 
 static void lock_game(void)
 {
@@ -292,7 +310,7 @@ static void lcd_draw_qr_callback(esp_qrcode_handle_t qrcode)
     }
 }
 
-static void lcd_draw_join_qr(void)
+static void lcd_draw_join_qr(const game_t *snap)
 {
     lcd_fill_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
     lcd_fill_rect(0, 0, LCD_WIDTH, 32, COLOR_BLUE);
@@ -303,7 +321,10 @@ static void lcd_draw_join_qr(void)
     if (esp_qrcode_generate(&cfg, join_url) != ESP_OK) {
         lcd_draw_token_qr_hint();
     }
-    lcd_draw_number(18, 210, game.player_count, COLOR_WHITE, 6);
+    lcd_draw_number(18, 210, snap->player_count, COLOR_WHITE, 6);
+    if (snap->admin_id != 255) {
+        lcd_draw_number(260, 210, snap->admin_id + 1, COLOR_YELLOW, 6);
+    }
 }
 
 static void lcd_draw_game_screen(void)
@@ -314,7 +335,7 @@ static void lcd_draw_game_screen(void)
     unlock_game();
 
     if (snap.phase == PHASE_LOBBY) {
-        lcd_draw_join_qr();
+        lcd_draw_join_qr(&snap);
         return;
     }
 
@@ -327,14 +348,20 @@ static void lcd_draw_game_screen(void)
     lcd_draw_number(152, 50, snap.shell_index, COLOR_YELLOW, 12);
     lcd_draw_number(220, 50, snap.shell_count, COLOR_MAGENTA, 12);
 
-    for (int i = 0; i < snap.player_count; i++) {
+    int visible = 0;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (!snap.players[i].active) {
+            continue;
+        }
         uint16_t y = 122 + i * 20;
         uint16_t color = snap.players[i].alive ? COLOR_GREEN : COLOR_GRAY;
+        y = 122 + visible * 20;
         if (i == snap.current && snap.phase == PHASE_ACTIVE) {
             color = COLOR_YELLOW;
         }
         lcd_fill_rect(18, y, 132, 14, color);
         lcd_draw_number(162, y - 2, snap.players[i].lives, COLOR_WHITE, 4);
+        visible++;
     }
 
     for (int i = snap.shell_index; i < snap.shell_count; i++) {
@@ -419,6 +446,96 @@ static player_t *player_by_id(uint8_t id)
         return NULL;
     }
     return &game.players[id];
+}
+
+static void recompute_admin_locked(void)
+{
+    uint8_t admin = 255;
+    uint32_t best_order = UINT32_MAX;
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        player_t *p = &game.players[i];
+        if (p->active && p->join_order < best_order) {
+            best_order = p->join_order;
+            admin = p->id;
+        }
+    }
+    if (game.admin_id != admin) {
+        game.admin_id = admin;
+        if (admin != 255) {
+            set_message("%s is admin", game.players[admin].name);
+        } else {
+            set_message("No admin");
+        }
+    }
+}
+
+static void release_player_tokens_locked(uint8_t pid)
+{
+    for (int i = 0; i < MAX_TOKENS; i++) {
+        if (game.tokens[i].owner == pid && !game.tokens[i].consumed) {
+            game.tokens[i].owner = -1;
+        }
+    }
+}
+
+static void remove_player_locked(uint8_t pid, const char *reason)
+{
+    player_t *p = player_by_id(pid);
+    if (!p) {
+        return;
+    }
+    char name[MAX_NAME_LEN + 1];
+    strlcpy(name, p->name, sizeof(name));
+    release_player_tokens_locked(pid);
+    memset(p, 0, sizeof(*p));
+    if (game.player_count > 0) {
+        game.player_count--;
+    }
+    if (game.current == pid && game.phase == PHASE_ACTIVE && alive_count() > 0) {
+        game.current = next_player_from(pid);
+    }
+    recompute_admin_locked();
+    set_message("%s left: %s", name, reason);
+}
+
+static void update_player_seen_locked(int pid)
+{
+    player_t *p = player_by_id(pid);
+    if (!p) {
+        return;
+    }
+    p->last_seen_ms = now_ms();
+    p->timeout_strikes = 0;
+    p->next_timeout_ms = 0;
+}
+
+static void cleanup_timeouts_locked(void)
+{
+    uint32_t now = now_ms();
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        player_t *p = &game.players[i];
+        if (!p->active) {
+            continue;
+        }
+        if (p->last_seen_ms == 0) {
+            p->last_seen_ms = now;
+            continue;
+        }
+        if (p->timeout_strikes == 0) {
+            if ((uint32_t)(now - p->last_seen_ms) >= PLAYER_TIMEOUT_MS) {
+                p->timeout_strikes = 1;
+                p->next_timeout_ms = now + PLAYER_TIMEOUT_RETRY_MS;
+            }
+            continue;
+        }
+        if ((int32_t)(now - p->next_timeout_ms) >= 0) {
+            p->timeout_strikes++;
+            p->next_timeout_ms = now + PLAYER_TIMEOUT_RETRY_MS;
+            if (p->timeout_strikes >= PLAYER_TIMEOUT_RETRIES) {
+                remove_player_locked(p->id, "timeout");
+            }
+        }
+    }
 }
 
 static uint8_t live_remaining(void)
@@ -639,6 +756,7 @@ static void game_reset(void)
     game.armed_target = -1;
     game.winner = -1;
     game.nfc_write_mode = false;
+    game.next_join_order = 1;
     game.max_lives = 3;
     game.max_shells = 6;
     game.live_shells_setting = 3;
@@ -724,6 +842,23 @@ static int param_int(const char *body, const char *key, int fallback)
     return param_get(body, key, value, sizeof(value)) ? atoi(value) : fallback;
 }
 
+static int query_int(httpd_req_t *req, const char *key, int fallback)
+{
+    size_t len = httpd_req_get_url_query_len(req) + 1;
+    if (len <= 1 || len > 128) {
+        return fallback;
+    }
+    char query[128];
+    char value[16];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK) {
+        return fallback;
+    }
+    if (httpd_query_key_value(query, key, value, sizeof(value)) != ESP_OK) {
+        return fallback;
+    }
+    return atoi(value);
+}
+
 static esp_err_t read_body(httpd_req_t *req, char *buf, size_t len)
 {
     int total = 0;
@@ -757,14 +892,16 @@ static esp_err_t api_state(httpd_req_t *req)
     char json[2300];
     char *w = json;
     char *end = json + sizeof(json);
+    int pid = query_int(req, "pid", -1);
     lock_game();
+    update_player_seen_locked(pid);
     uint8_t live = live_remaining();
     uint8_t blank = game.shell_count - game.shell_index - live;
     w += snprintf(w, end - w,
                   "{\"ok\":true,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
-                  "\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
+                  "\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
                   "\"live_remaining\":%u,\"blank_remaining\":%u,\"armed_target\":%d,",
-                  ap_ssid, join_path, phase_name(game.phase), game.message, game.current, game.winner,
+                  ap_ssid, join_path, phase_name(game.phase), game.message, game.admin_id, game.player_count, game.current, game.winner,
                   game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, game.armed_target);
     if (game.armed_target >= 0 && game.armed_target < MAX_PLAYERS && game.players[game.armed_target].active) {
         w += snprintf(w, end - w, "\"armed_target_name\":\"%s\",", game.players[game.armed_target].name);
@@ -772,13 +909,16 @@ static esp_err_t api_state(httpd_req_t *req)
         w += snprintf(w, end - w, "\"armed_target_name\":\"\",");
     }
     w += snprintf(w, end - w, "\"players\":[");
+    bool first_player = true;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (!game.players[i].active) {
             continue;
         }
         player_t *p = &game.players[i];
-        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"lives\":%u,\"alive\":%s,\"inv\":[",
-                      i == 0 ? "" : ",", p->id, p->name, p->lives, p->alive ? "true" : "false");
+        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"lives\":%u,\"alive\":%s,\"admin\":%s,\"inv\":[",
+                      first_player ? "" : ",", p->id, p->name, p->lives, p->alive ? "true" : "false",
+                      p->id == game.admin_id ? "true" : "false");
+        first_player = false;
         for (int item = 0; item < MAX_ITEMS; item++) {
             w += snprintf(w, end - w, "%s%u", item == 0 ? "" : ",", p->inv[item]);
         }
@@ -820,11 +960,11 @@ static esp_err_t api_register(httpd_req_t *req)
     p->alive = true;
     p->id = id;
     p->lives = game.max_lives;
+    p->join_order = game.next_join_order++;
+    p->last_seen_ms = now_ms();
     strlcpy(p->name, name, sizeof(p->name));
-    if (game.player_count == 0) {
-        game.admin_id = id;
-    }
     game.player_count++;
+    recompute_admin_locked();
     set_message("%s joined", p->name);
     bool admin = game.admin_id == id;
     unlock_game();
@@ -1409,6 +1549,7 @@ static void button_task(void *arg)
 
 static void game_task(void *arg)
 {
+    uint32_t last_timeout_check = 0;
     while (true) {
         if (trigger_event) {
             trigger_event = false;
@@ -1418,6 +1559,16 @@ static void game_task(void *arg)
                 set_message("NFC write mode %s", game.nfc_write_mode ? "on" : "off");
             } else {
                 resolve_shot();
+            }
+            unlock_game();
+        }
+        uint32_t now = now_ms();
+        if ((uint32_t)(now - last_timeout_check) >= 500) {
+            last_timeout_check = now;
+            lock_game();
+            cleanup_timeouts_locked();
+            if (game.phase == PHASE_ACTIVE) {
+                check_game_over();
             }
             unlock_game();
         }

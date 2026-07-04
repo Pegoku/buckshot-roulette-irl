@@ -41,6 +41,8 @@ function itemLabel(name) {
 
 function render() {
   if (!state) return;
+  isAdmin = playerId >= 0 && state.admin === playerId;
+  localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
   $("session").textContent = `${state.ap} | ${state.phase}`;
   $("admin").classList.toggle("hidden", !isAdmin);
   $("writeMode").textContent = state.write_mode ? "NFC write mode is on" : "NFC write mode is off";
@@ -51,8 +53,9 @@ function render() {
   $("players").innerHTML = state.players.map((p) => {
     const cls = p.alive ? "player" : "player dead";
     const mark = p.id === state.current ? " <span class=pill>turn</span>" : "";
+    const admin = p.admin ? " <span class=pill>admin</span>" : "";
     const me = p.id === playerId ? " <span class=pill>you</span>" : "";
-    return `<div class="${cls}"><span>${p.name}${mark}${me}</span><span>${p.lives} hp</span></div>`;
+    return `<div class="${cls}"><span>${p.name}${mark}${admin}${me}</span><span>${p.lives} hp</span></div>`;
   }).join("");
 
   $("shotgun").innerHTML = `<div class=shells><span>Shells</span><span>${state.shell_index}/${state.shell_count}</span></div>
