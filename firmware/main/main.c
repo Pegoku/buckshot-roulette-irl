@@ -119,8 +119,10 @@ typedef struct {
 static const char *TAG = "buckshot";
 static spi_device_handle_t lcd_spi;
 static SemaphoreHandle_t game_lock;
+static TaskHandle_t display_task_handle;
 static game_t game;
 static volatile bool trigger_event;
+static volatile uint32_t display_version;
 static char ap_ssid[32];
 static char join_token[17];
 static char join_path[32];
@@ -151,6 +153,14 @@ static void lock_game(void)
 static void unlock_game(void)
 {
     xSemaphoreGive(game_lock);
+}
+
+static void mark_display_dirty(void)
+{
+    display_version++;
+    if (display_task_handle) {
+        xTaskNotifyGive(display_task_handle);
+    }
 }
 
 static uint16_t color_swap(uint16_t color)
@@ -371,7 +381,7 @@ static void lcd_init(void)
     vTaskDelay(pdMS_TO_TICKS(120));
     lcd_cmd(0x29);
     gpio_set_level(PIN_LCD_BL, 1);
-    lcd_draw_game_screen();
+    lcd_fill_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
 }
 
 static const char *phase_name(phase_t phase)
@@ -478,6 +488,7 @@ static void set_message(const char *fmt, ...)
     va_start(args, fmt);
     vsnprintf(game.message, sizeof(game.message), fmt, args);
     va_end(args);
+    mark_display_dirty();
 }
 
 static int next_player_from(int start)
@@ -574,6 +585,7 @@ static void resolve_shot(void)
     player_t *target = player_by_id(game.armed_target);
     if (!shooter || !target || !shooter->alive || !target->alive) {
         game.armed_target = -1;
+        mark_display_dirty();
         return;
     }
 
@@ -918,6 +930,7 @@ static void decrement_item(player_t *p, item_t item)
         if (t->used && !t->consumed && t->owner == p->id && t->item == item) {
             t->consumed = true;
             save_tokens_locked();
+            mark_display_dirty();
             return;
         }
     }
@@ -1369,9 +1382,15 @@ static void game_task(void *arg)
 
 static void display_task(void *arg)
 {
+    uint32_t last_drawn_version = UINT32_MAX;
     while (true) {
-        lcd_draw_game_screen();
-        vTaskDelay(pdMS_TO_TICKS(500));
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+        vTaskDelay(pdMS_TO_TICKS(30));
+        uint32_t version = display_version;
+        if (version != last_drawn_version) {
+            last_drawn_version = version;
+            lcd_draw_game_screen();
+        }
     }
 }
 
@@ -1401,5 +1420,6 @@ void app_main(void)
 
     xTaskCreatePinnedToCore(button_task, "button", 2048, NULL, 10, NULL, 0);
     xTaskCreatePinnedToCore(game_task, "game", 4096, NULL, 8, NULL, 0);
-    xTaskCreatePinnedToCore(display_task, "display", 4096, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(display_task, "display", 4096, NULL, 5, &display_task_handle, 1);
+    mark_display_dirty();
 }

@@ -9,6 +9,7 @@ It includes:
 - open ESP32-S3 Wi-Fi access point
 - QR/token-gated web session URL
 - real QR rendering on the TFT display
+- event-driven display redraws to avoid constant full-screen flashing
 - SPIFFS-hosted web app assets
 - player registration with first-player admin
 - admin game setup
@@ -113,6 +114,8 @@ During the game, the display shows a compact numeric status view:
 - total shells
 - player life bars
 - remaining shell blocks
+
+The current display code does not use LVGL. It uses the small direct ILI9341 SPI driver in `main/main.c`. Redraws are event-driven through `mark_display_dirty()`, so the screen should update only after game state changes instead of refreshing continuously.
 - remaining shell blocks
 
 ## Game Test Flow
