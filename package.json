@@ -1,0 +1,9 @@
+{
+  "name": "buckshot-roulette-irl",
+  "private": true,
+  "scripts": {
+    "web:dev": "npm --prefix web-emulator run dev",
+    "web:build": "npm --prefix web-emulator run build",
+    "web:preview": "npm --prefix web-emulator run preview"
+  }
+}

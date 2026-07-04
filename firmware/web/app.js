@@ -10,7 +10,11 @@ const $ = (id) => document.getElementById(id);
 async function lockLandscape() {
   try {
     if (document.fullscreenEnabled && !document.fullscreenElement) {
-      await document.documentElement.requestFullscreen();
+      try {
+        await document.documentElement.requestFullscreen({navigationUI: "hide"});
+      } catch {
+        await document.documentElement.requestFullscreen();
+      }
     }
     if (screen.orientation && screen.orientation.lock) {
       await screen.orientation.lock("landscape");
@@ -300,9 +304,12 @@ $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
 
 document.addEventListener("pointerdown", lockLandscape, {once: true});
+document.addEventListener("click", lockLandscape, {once: true});
+document.addEventListener("touchend", lockLandscape, {once: true});
 document.addEventListener("keydown", lockLandscape, {once: true});
 
 async function boot() {
+  await lockLandscape();
   try {
     await refresh();
   } catch (e) {

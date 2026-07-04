@@ -243,6 +243,24 @@ spiffs_create_partition_image(web web FLASH_IN_PROJECT)
 
 Because `FLASH_IN_PROJECT` is enabled, `idf.py flash` flashes the web partition too.
 
+## Web Emulator
+
+Use the local Vite emulator to test the ESP-hosted website without flashing the ESP32:
+
+```sh
+cd web-emulator
+npm install
+npm run dev
+```
+
+Open:
+
+```text
+http://localhost:5173/join/emulator
+```
+
+The emulator serves the real files from `firmware/web/` and mocks the `/api/*` endpoints used by the app, so CSS/HTML/JS edits hot-reload immediately. The first joined tab is admin. Open another browser profile or incognito tab to simulate a second player.
+
 ## Current Limits
 
 - The display driver is still the minimal validated ILI9341 SPI driver, not the final `esp_lcd`/LVGL stack.
