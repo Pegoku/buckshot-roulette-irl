@@ -11,6 +11,7 @@ idf_component_register(
         esp_http_server
         esp_https_server
         esp_netif
+        esp_timer
         esp_wifi
         nvs_flash
         qrcode

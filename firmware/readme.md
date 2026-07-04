@@ -12,6 +12,8 @@ It includes:
 - event-driven display redraws to avoid constant full-screen flashing
 - SPIFFS-hosted web app assets
 - player registration with first-player admin
+- automatic admin transfer when the current admin disconnects
+- player timeout cleanup from app heartbeat
 - admin game setup
 - shell randomization and turn handling
 - trigger-resolved armed shots
@@ -131,6 +133,7 @@ Android Chrome will show a certificate warning because the certificate is self-s
 ## Display Output
 
 In lobby, the display shows a real QR code for the per-boot HTTPS join URL.
+The lower-left number is the count of registered players. The lower-right yellow number is the current admin player number when an admin exists.
 
 During the game, the display shows a compact numeric status view:
 
@@ -156,6 +159,23 @@ The current display code does not use LVGL. It uses the small direct ILI9341 SPI
 7. Admin presses `Start round`.
 8. The active player selects a target and presses `Arm self shot` or `Arm target shot`.
 9. Pull the physical trigger to resolve the armed shot.
+
+## Player Timeout and Admin Transfer
+
+The phone app polls `/api/state?pid=<id>` about every 1.5 seconds. That poll is the player heartbeat.
+
+Timeout behavior:
+
+- after 20 seconds without heartbeat, the firmware starts timeout checks
+- it then waits through 3 missed checks spaced 2 seconds apart
+- after the third missed check, the player is removed
+
+Admin behavior:
+
+- admin is always the earliest joined active player
+- if players A, B, and C join, A is admin
+- if A times out or leaves, B becomes admin
+- the web UI updates admin controls automatically on the next state poll
 
 Shooting rules implemented:
 
