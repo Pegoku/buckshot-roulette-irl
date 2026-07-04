@@ -280,6 +280,89 @@ static void lcd_draw_number(uint16_t x, uint16_t y, uint32_t value, uint16_t col
     }
 }
 
+static const uint8_t *font5x7(char c)
+{
+    static const uint8_t blank[7] = {0, 0, 0, 0, 0, 0, 0};
+    static const uint8_t dash[7] = {0, 0, 0, 0x1f, 0, 0, 0};
+    static const uint8_t chars[][7] = {
+        {0x0e, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0e}, // 0
+        {0x04, 0x0c, 0x04, 0x04, 0x04, 0x04, 0x0e}, // 1
+        {0x0e, 0x11, 0x01, 0x02, 0x04, 0x08, 0x1f}, // 2
+        {0x1e, 0x01, 0x01, 0x0e, 0x01, 0x01, 0x1e}, // 3
+        {0x02, 0x06, 0x0a, 0x12, 0x1f, 0x02, 0x02}, // 4
+        {0x1f, 0x10, 0x10, 0x1e, 0x01, 0x01, 0x1e}, // 5
+        {0x0e, 0x10, 0x10, 0x1e, 0x11, 0x11, 0x0e}, // 6
+        {0x1f, 0x01, 0x02, 0x04, 0x08, 0x08, 0x08}, // 7
+        {0x0e, 0x11, 0x11, 0x0e, 0x11, 0x11, 0x0e}, // 8
+        {0x0e, 0x11, 0x11, 0x0f, 0x01, 0x01, 0x0e}, // 9
+        {0x0e, 0x11, 0x11, 0x1f, 0x11, 0x11, 0x11}, // A
+        {0x1e, 0x11, 0x11, 0x1e, 0x11, 0x11, 0x1e}, // B
+        {0x0e, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0e}, // C
+        {0x1e, 0x11, 0x11, 0x11, 0x11, 0x11, 0x1e}, // D
+        {0x1f, 0x10, 0x10, 0x1e, 0x10, 0x10, 0x1f}, // E
+        {0x1f, 0x10, 0x10, 0x1e, 0x10, 0x10, 0x10}, // F
+        {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0f}, // u
+        {0x00, 0x00, 0x0e, 0x10, 0x10, 0x11, 0x0e}, // c
+        {0x10, 0x10, 0x12, 0x14, 0x18, 0x14, 0x12}, // k
+        {0x00, 0x00, 0x0f, 0x10, 0x0e, 0x01, 0x1e}, // s
+        {0x10, 0x10, 0x16, 0x19, 0x11, 0x11, 0x11}, // h
+        {0x00, 0x00, 0x0e, 0x11, 0x11, 0x11, 0x0e}, // o
+        {0x08, 0x08, 0x1e, 0x08, 0x08, 0x09, 0x06}, // t
+    };
+    if (c >= '0' && c <= '9') {
+        return chars[c - '0'];
+    }
+    if (c >= 'A' && c <= 'F') {
+        return chars[10 + c - 'A'];
+    }
+    switch (c) {
+    case 'B':
+        return chars[11];
+    case 'u':
+        return chars[16];
+    case 'c':
+        return chars[17];
+    case 'k':
+        return chars[18];
+    case 's':
+        return chars[19];
+    case 'h':
+        return chars[20];
+    case 'o':
+        return chars[21];
+    case 't':
+        return chars[22];
+    case '-':
+        return dash;
+    default:
+        return blank;
+    }
+}
+
+static void lcd_draw_char5x7(uint16_t x, uint16_t y, char c, uint16_t color, uint16_t scale)
+{
+    const uint8_t *rows = font5x7(c);
+    for (int row = 0; row < 7; row++) {
+        for (int col = 0; col < 5; col++) {
+            if (rows[row] & (1 << (4 - col))) {
+                lcd_fill_rect(x + col * scale, y + row * scale, scale, scale, color);
+            }
+        }
+    }
+}
+
+static void lcd_draw_text_center(uint16_t y, const char *text, uint16_t color, uint16_t scale)
+{
+    size_t len = strlen(text);
+    uint16_t char_w = 6 * scale;
+    uint16_t width = len > 0 ? (len * char_w) - scale : 0;
+    uint16_t x = width < LCD_WIDTH ? (LCD_WIDTH - width) / 2 : 0;
+    for (size_t i = 0; text[i] != '\0' && x < LCD_WIDTH; i++) {
+        lcd_draw_char5x7(x, y, text[i], color, scale);
+        x += char_w;
+    }
+}
+
 static void lcd_draw_token_qr_hint(void)
 {
     for (int i = 0; i < 16; i++) {
@@ -314,6 +397,7 @@ static void lcd_draw_join_qr(const game_t *snap)
 {
     lcd_fill_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
     lcd_fill_rect(0, 0, LCD_WIDTH, 32, COLOR_BLUE);
+    lcd_draw_text_center(6, ap_ssid, COLOR_WHITE, 3);
     esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
     cfg.display_func = lcd_draw_qr_callback;
     cfg.max_qrcode_version = 6;

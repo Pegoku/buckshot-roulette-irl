@@ -37,8 +37,11 @@
       </div>
       <h3>NFC writer</h3>
       <p id="writeMode"></p>
-      <button id="toggleWriteMode" type="button">Toggle NFC write mode</button>
-      <div class="row wrap" id="writer"></div>
+      <div class="row wrap">
+        <button id="toggleWriteMode" type="button">Toggle NFC write mode</button>
+        <button id="openWriteDialog" type="button" class="hidden">Write NFC tag</button>
+        <button id="testNfcAdmin" type="button">Test NFC read</button>
+      </div>
       <p id="writeStatus"></p>
     </section>
 
@@ -60,13 +63,15 @@
       <div id="inventory" class="row wrap"></div>
       <h3>NFC scanner</h3>
       <button id="scan" type="button">Scan item tag</button>
+      <button id="testNfc" type="button">Test NFC read</button>
       <p id="nfc"></p>
     </section>
   </main>
   <div id="nfcWriteDialog" class="overlay hidden" role="dialog" aria-modal="true">
     <div class="modal">
       <h2>Write NFC Tag</h2>
-      <p id="writePrompt">Approach NFC tag to write.</p>
+      <p id="writePrompt">Choose an item to write.</p>
+      <div class="row wrap" id="writer"></div>
       <div class="tag-graphic" aria-hidden="true"></div>
       <p id="writeProgress"></p>
       <button id="cancelWrite" type="button">Cancel</button>

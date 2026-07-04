@@ -55,6 +55,7 @@ function render() {
   $("session").textContent = `${state.ap} | ${state.phase}`;
   $("admin").classList.toggle("hidden", !isAdmin);
   $("writeMode").textContent = state.write_mode ? "NFC write mode is on" : "NFC write mode is off";
+  $("openWriteDialog").classList.toggle("hidden", !state.write_mode);
   $("register").classList.toggle("hidden", playerId >= 0);
   $("actions").classList.toggle("hidden", playerId < 0 || state.phase === "lobby" || state.winner >= 0);
   $("message").textContent = state.message || "";
@@ -180,6 +181,49 @@ async function scanNfc() {
   }
 }
 
+function nfcRecordText(record) {
+  const type = record.recordType || "unknown";
+  if (record.recordType === "text") {
+    return new TextDecoder(record.encoding || "utf-8").decode(record.data);
+  }
+  if (record.recordType === "url") {
+    return new TextDecoder().decode(record.data);
+  }
+  return `${type} (${record.mediaType || "no media type"})`;
+}
+
+async function testNfcRead(targetId = "nfc") {
+  try {
+    if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
+    const reader = new NDEFReader();
+    await reader.scan();
+    $(targetId).textContent = "Tap an NFC tag";
+    reader.onreading = (event) => {
+      const records = [...event.message.records].map((record, index) => {
+        return `${index + 1}. ${record.recordType}: ${nfcRecordText(record)}`;
+      });
+      $(targetId).textContent = [
+        `Serial: ${event.serialNumber || "none"}`,
+        `Records: ${records.length}`,
+        ...records
+      ].join("\n");
+    };
+  } catch (e) {
+    $(targetId).textContent = e.message;
+  }
+}
+
+function openWriteDialog() {
+  if (!state || !state.write_mode) {
+    $("writeStatus").textContent = "Enable NFC write mode first";
+    return;
+  }
+  $("writePrompt").textContent = "Choose an item to write.";
+  $("writeProgress").textContent = "";
+  $("writer").classList.remove("hidden");
+  $("nfcWriteDialog").classList.remove("hidden");
+}
+
 async function writeItem(item) {
   if (writeAbort) return;
   try {
@@ -187,6 +231,7 @@ async function writeItem(item) {
     writeAbort = new AbortController();
     $("writePrompt").textContent = `Approach NFC tag to write ${itemLabel(item)}.`;
     $("writeProgress").textContent = "Waiting for tag";
+    $("writer").classList.add("hidden");
     $("nfcWriteDialog").classList.remove("hidden");
     const r = await api("/api/write-token", {pid: playerId, item});
     const writer = new NDEFReader();
@@ -202,13 +247,18 @@ async function writeItem(item) {
     $("writeProgress").textContent = message;
   } finally {
     writeAbort = null;
-    setTimeout(() => $("nfcWriteDialog").classList.add("hidden"), 450);
+    setTimeout(() => {
+      $("nfcWriteDialog").classList.add("hidden");
+      $("writer").classList.remove("hidden");
+    }, 450);
   }
 }
 
 function cancelWrite() {
   if (writeAbort) {
     writeAbort.abort();
+  } else {
+    $("nfcWriteDialog").classList.add("hidden");
   }
 }
 
@@ -218,9 +268,12 @@ $("saveSetup").onclick = setup;
 $("start").onclick = start;
 $("reset").onclick = reset;
 $("toggleWriteMode").onclick = toggleWriteMode;
+$("openWriteDialog").onclick = openWriteDialog;
 $("armSelf").onclick = () => arm(playerId);
 $("armTarget").onclick = () => arm(selectedTarget);
 $("scan").onclick = scanNfc;
+$("testNfc").onclick = () => testNfcRead("nfc");
+$("testNfcAdmin").onclick = () => testNfcRead("writeStatus");
 $("cancelWrite").onclick = cancelWrite;
 $("writer").innerHTML = items.map((item) => `<button onclick="writeItem('${item}')">${itemLabel(item)}</button>`).join("");
 $("name").value = localStorage.getItem("buckshotPlayerName") || "";

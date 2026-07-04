@@ -126,6 +126,11 @@ input {
   margin-left: 4px;
 }
 
+#nfc,
+#writeStatus {
+  white-space: pre-line;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
