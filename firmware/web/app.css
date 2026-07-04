@@ -125,3 +125,46 @@ input {
   background: #293241;
   margin-left: 4px;
 }
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, .72);
+  padding: 18px;
+  z-index: 10;
+}
+
+.overlay.hidden {
+  display: none;
+}
+
+.modal {
+  width: min(100%, 360px);
+  border: 1px solid #454b59;
+  border-radius: 8px;
+  background: #181a20;
+  padding: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .5);
+}
+
+.tag-graphic {
+  width: 132px;
+  height: 88px;
+  margin: 18px auto;
+  border: 2px solid #facc15;
+  border-radius: 8px;
+  background:
+    linear-gradient(90deg, transparent 16px, rgba(250, 204, 21, .2) 16px 18px, transparent 18px),
+    linear-gradient(#2c3140, #20242f);
+  position: relative;
+}
+
+.tag-graphic::after {
+  content: "";
+  position: absolute;
+  inset: 18px 38px;
+  border: 3px solid #facc15;
+  border-radius: 999px;
+}

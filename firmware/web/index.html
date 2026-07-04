@@ -63,6 +63,15 @@
       <p id="nfc"></p>
     </section>
   </main>
+  <div id="nfcWriteDialog" class="overlay hidden" role="dialog" aria-modal="true">
+    <div class="modal">
+      <h2>Write NFC Tag</h2>
+      <p id="writePrompt">Approach NFC tag to write.</p>
+      <div class="tag-graphic" aria-hidden="true"></div>
+      <p id="writeProgress"></p>
+      <button id="cancelWrite" type="button">Cancel</button>
+    </div>
+  </div>
   <script src="/app.js"></script>
 </body>
 </html>

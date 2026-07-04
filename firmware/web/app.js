@@ -3,6 +3,7 @@ let playerId = Number(localStorage.getItem("buckshotPlayerId") || "-1");
 let isAdmin = localStorage.getItem("buckshotAdmin") === "1";
 let selectedTarget = -1;
 let state = null;
+let writeAbort = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -155,14 +156,34 @@ async function scanNfc() {
 }
 
 async function writeItem(item) {
+  if (writeAbort) return;
   try {
     if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
+    writeAbort = new AbortController();
+    $("writePrompt").textContent = `Approach NFC tag to write ${itemLabel(item)}.`;
+    $("writeProgress").textContent = "Waiting for tag";
+    $("nfcWriteDialog").classList.remove("hidden");
     const r = await api("/api/write-token", {pid: playerId, item});
     const writer = new NDEFReader();
-    await writer.write({records: [{recordType: "text", data: r.payload}]});
+    await writer.write(
+      {records: [{recordType: "text", data: r.payload}]},
+      {signal: writeAbort.signal}
+    );
     $("writeStatus").textContent = `Wrote ${itemLabel(item)}`;
+    $("writeProgress").textContent = "Tag written";
   } catch (e) {
-    $("writeStatus").textContent = e.message;
+    const message = e.name === "AbortError" ? "Write cancelled" : e.message;
+    $("writeStatus").textContent = message;
+    $("writeProgress").textContent = message;
+  } finally {
+    writeAbort = null;
+    setTimeout(() => $("nfcWriteDialog").classList.add("hidden"), 450);
+  }
+}
+
+function cancelWrite() {
+  if (writeAbort) {
+    writeAbort.abort();
   }
 }
 
@@ -175,6 +196,7 @@ $("toggleWriteMode").onclick = toggleWriteMode;
 $("armSelf").onclick = () => arm(playerId);
 $("armTarget").onclick = () => arm(selectedTarget);
 $("scan").onclick = scanNfc;
+$("cancelWrite").onclick = cancelWrite;
 $("writer").innerHTML = items.map((item) => `<button onclick="writeItem('${item}')">${itemLabel(item)}</button>`).join("");
 
 refresh().catch((e) => $("message").textContent = e.message);
