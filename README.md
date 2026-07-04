@@ -17,7 +17,7 @@ Let's make killing each other a mostly lighthearted game (yay!) by referencing t
 - 2.4" TFT Display (ILI9341, 240x320, spi, landscape).
 - Mifrare ultralight NFC stickers (40 units for this project).
 - Android smartphones with a chromium-based web browser to interact with NFC.
-- Button (for the trigger)
+- Button (for the trigger).
 
 
 ## Game flow 
