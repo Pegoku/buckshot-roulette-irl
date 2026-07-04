@@ -6,89 +6,88 @@
   <meta name="screen-orientation" content="landscape">
   <meta name="x5-orientation" content="landscape">
   <title>Buckshot IRL</title>
+  <link rel="manifest" href="/manifest.webmanifest">
   <link rel="stylesheet" href="/app.css">
 </head>
 <body>
   <main>
-    <header class="topline">
-      <div>
-        <p class="kicker">live terminal</p>
-        <h1>Buckshot IRL</h1>
-        <p id="session" class="phase">Connecting</p>
+    <section class="hud" aria-live="polite">
+      <div class="topline">
+        <div>
+          <p class="kicker">live terminal</p>
+          <h1 id="turnTitle">Syncing</h1>
+        </div>
       </div>
-      <button id="refresh" type="button" aria-label="Refresh table state">Refresh</button>
-    </header>
 
-    <section id="register" class="panel">
-      <h2>Join</h2>
-      <label>Name <input id="name" maxlength="15" autocomplete="off"></label>
-      <button id="join" type="button">Join game</button>
-    </section>
-
-    <section id="admin" class="panel hidden">
-      <h2>Admin</h2>
-      <div class="grid">
-        <label>Lives <input id="lives" type="number" min="1" max="9" value="3"></label>
-        <label>Shells <input id="shells" type="number" min="2" max="8" value="6"></label>
-        <label>Live shells <input id="live" type="number" min="1" max="7" value="3"></label>
-        <label>Items/player <input id="items" type="number" min="0" max="8" value="2"></label>
+      <div id="life" class="life-pack" aria-label="Life meter"></div>
+      <div id="hudActions" class="hud-actions hidden">
+        <button id="shot" type="button">Shot</button>
+        <button id="adminToggle" type="button" class="hidden">Admin</button>
+        <button id="debugToggle" type="button">Debug</button>
       </div>
-      <div class="row">
-        <button id="saveSetup" type="button">Save setup</button>
-        <button id="start" type="button">Start round</button>
-        <button id="reset" type="button">Reset</button>
-      </div>
-      <h3>NFC writer</h3>
-      <p id="writeMode"></p>
-      <div class="row wrap">
-        <button id="toggleWriteMode" type="button">Toggle NFC write mode</button>
-        <button id="openWriteDialog" type="button" class="hidden">Write NFC tag</button>
-        <button id="testNfcAdmin" type="button">Test NFC read</button>
-      </div>
-      <p id="writeStatus"></p>
-    </section>
-
-    <section id="status" class="panel">
-      <h2>Table</h2>
-      <div id="players"></div>
-      <div id="shotgun"></div>
+      <p id="session" class="phase">connecting</p>
       <p id="message" class="message"></p>
     </section>
-
-    <section id="actions" class="panel hidden">
-      <h2>Actions</h2>
-      <div id="targets" class="row wrap"></div>
-      <div class="row wrap">
-        <button id="armSelf" type="button">Arm self shot</button>
-        <button id="armTarget" type="button">Arm target shot</button>
-      </div>
-      <h3>Items</h3>
-      <div id="inventory" class="row wrap"></div>
-      <h3>NFC scanner</h3>
-      <button id="scan" type="button">Scan item tag</button>
-      <button id="testNfc" type="button">Test NFC read</button>
-      <p id="nfc"></p>
-    </section>
   </main>
-  <div id="nfcWriteDialog" class="overlay hidden" role="dialog" aria-modal="true">
-    <div class="modal">
+
+  <div id="targetDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="targetTitle">
+    <div class="popup-card">
       <div class="popup-head">
-        <h2>Write NFC Tag</h2>
-        <button id="cancelWrite" type="button">Cancel</button>
+        <h2 id="targetTitle">Shot target</h2>
+        <button id="closeTarget" type="button">Close</button>
       </div>
-      <p id="writePrompt">Choose an item to write.</p>
-      <div class="row wrap" id="writer"></div>
-      <div class="tag-graphic" aria-hidden="true"></div>
-      <p id="writeProgress"></p>
+      <div id="targets" class="target-grid"></div>
     </div>
   </div>
+
+  <div id="joinPanel" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="joinTitle">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h2 id="joinTitle">Sign in</h2>
+      </div>
+      <label>Name <input id="name" maxlength="15" autocomplete="off"></label>
+      <button id="join" class="scan-button" type="button">Join game</button>
+      <p id="joinStatus" class="message"></p>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="debug-panel hidden">
+    <div class="popup-head">
+      <h2>Admin</h2>
+      <button id="closeAdmin" type="button">Close</button>
+    </div>
+    <div class="admin-grid">
+      <label>Lives <input id="lives" type="number" min="1" max="9" value="3"></label>
+      <label>Shells <input id="shells" type="number" min="2" max="8" value="6"></label>
+      <label>Live shells <input id="live" type="number" min="1" max="7" value="3"></label>
+      <label>Items/player <input id="items" type="number" min="0" max="8" value="2"></label>
+    </div>
+    <div class="admin-actions">
+      <button id="saveSetup" type="button">Save setup</button>
+      <button id="start" type="button">Start round</button>
+      <button id="reset" type="button">Reset</button>
+    </div>
+    <p id="adminStatus" class="message"></p>
+  </div>
+
+  <div id="debugPanel" class="debug-panel hidden">
+    <div class="popup-head">
+      <h2>Debug NFC</h2>
+      <button id="closeDebug" type="button">Close</button>
+    </div>
+    <div id="inventory" class="inventory-grid"></div>
+    <button id="scan" class="scan-button" type="button">Scan tag</button>
+    <p id="nfc" class="message"></p>
+  </div>
+
   <div class="rotate-lock" role="status" aria-live="polite">
     <div class="rotate-card">
       <div class="rotate-icon" aria-hidden="true">▯</div>
       <h2>Rotate device</h2>
-      <p>This terminal runs best in landscape.</p>
+      <p>This terminal runs in landscape.</p>
     </div>
   </div>
+
   <script src="/app.js"></script>
 </body>
 </html>

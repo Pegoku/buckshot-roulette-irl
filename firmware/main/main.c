@@ -1439,6 +1439,9 @@ static const char *content_type_for(const char *path)
     if (strcmp(ext, ".js") == 0) {
         return "application/javascript";
     }
+    if (strcmp(ext, ".webmanifest") == 0) {
+        return "application/manifest+json";
+    }
     return "application/octet-stream";
 }
 
@@ -1561,6 +1564,7 @@ static void register_routes(httpd_handle_t server)
     register_get(server, "/join/*", join_handler);
     register_get(server, "/app.css", static_handler);
     register_get(server, "/app.js", static_handler);
+    register_get(server, "/manifest.webmanifest", static_handler);
     register_get(server, "/fonts/*", static_handler);
     register_get(server, "/api/state", api_state);
     register_post(server, "/api/register", api_register);
@@ -1578,7 +1582,7 @@ static void start_https_server(void)
 {
     httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
     config.httpd.uri_match_fn = httpd_uri_match_wildcard;
-    config.httpd.max_uri_handlers = 16;
+    config.httpd.max_uri_handlers = 20;
     config.servercert = server_crt_start;
     config.servercert_len = server_crt_end - server_crt_start;
     config.prvtkey_pem = server_key_start;

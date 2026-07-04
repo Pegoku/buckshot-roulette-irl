@@ -3,10 +3,22 @@ let playerId = Number(localStorage.getItem("buckshotPlayerId") || "-1");
 let isAdmin = localStorage.getItem("buckshotAdmin") === "1";
 let selectedTarget = -1;
 let state = null;
-let writeAbort = null;
-let autoJoinInFlight = false;
+let demoMode = false;
 
 const $ = (id) => document.getElementById(id);
+
+async function lockLandscape() {
+  try {
+    if (document.fullscreenEnabled && !document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    }
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch {
+    // Browser support varies; landscape CSS fallback still handles layout.
+  }
+}
 
 async function api(path, body) {
   const opts = body ? {
@@ -40,121 +52,216 @@ function itemLabel(name) {
   }[name] || name;
 }
 
+function makeDemoState() {
+  return {
+    ap: "LOCAL",
+    phase: "active",
+    admin: -1,
+    current: 0,
+    winner: -1,
+    message: "terminal link unstable",
+    players: [
+      {id: 0, name: "Operator", lives: 3, alive: true, admin: false, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
+      {id: 1, name: "Dealer", lives: 3, alive: true, admin: false, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
+    ]
+  };
+}
+
 function clearSession() {
   localStorage.removeItem("buckshotPlayerId");
   localStorage.removeItem("buckshotAdmin");
+  localStorage.removeItem("buckshotJoinPath");
+  localStorage.removeItem("buckshotPlayerName");
   playerId = -1;
   isAdmin = false;
   selectedTarget = -1;
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
+}
+
+function lifeMeter(lives, maxLives = 3) {
+  const total = Math.max(1, Number(maxLives) || 3);
+  const alive = Math.max(0, Math.min(total, Number(lives) || 0));
+  return Array.from({length: total}, (_, i) => {
+    const filled = i < alive ? " filled" : "";
+    return `<span class="life-cell${filled}" aria-hidden="true">ϟ</span>`;
+  }).join("");
+}
+
+function playerBySlot(slot) {
+  if (!state) return null;
+  if (slot === 0) return state.players.find((p) => p.id === playerId) || null;
+  const opponents = state.players.filter((p) => p.id !== playerId);
+  return opponents[slot - 1] || null;
 }
 
 function render() {
   if (!state) return;
   isAdmin = playerId >= 0 && state.admin === playerId;
   localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
-  $("session").textContent = `${state.ap} | ${state.phase}`;
-  $("admin").classList.toggle("hidden", !isAdmin);
-  $("writeMode").textContent = state.write_mode ? "NFC write mode is on" : "NFC write mode is off";
-  $("openWriteDialog").classList.toggle("hidden", !state.write_mode);
-  $("register").classList.toggle("hidden", playerId >= 0);
-  $("actions").classList.toggle("hidden", playerId < 0 || state.phase === "lobby" || state.winner >= 0);
-  $("message").textContent = state.message || "";
-
-  $("players").innerHTML = state.players.map((p) => {
-    const cls = p.alive ? "player" : "player dead";
-    const mark = p.id === state.current ? " <span class=pill>turn</span>" : "";
-    const admin = p.admin ? " <span class=pill>admin</span>" : "";
-    const me = p.id === playerId ? " <span class=pill>you</span>" : "";
-    return `<div class="${cls}"><span>${p.name}${mark}${admin}${me}</span><span>${p.lives} hp</span></div>`;
-  }).join("");
-
-  $("shotgun").innerHTML = `<div class=shells><span>Shells</span><span>${state.shell_index}/${state.shell_count}</span></div>
-    <div class=shells><span>Known remaining</span><span>${state.live_remaining} live / ${state.blank_remaining} blank</span></div>
-    <div class=shells><span>Armed target</span><span>${state.armed_target_name || "none"}</span></div>`;
-
-  $("targets").innerHTML = state.players.filter((p) => p.alive).map((p) => {
-    const active = selectedTarget === p.id ? "active" : "";
-    return `<button class="${active}" onclick="selectTarget(${p.id})">${p.name}</button>`;
-  }).join("");
 
   const me = state.players.find((p) => p.id === playerId);
+  const isMyTurn = Boolean(me && me.id === state.current && state.phase !== "lobby" && state.winner < 0);
+  const maxLives = Math.max(3, ...state.players.map((p) => Number(p.lives) || 0));
+
+  $("turnTitle").textContent = state.winner >= 0
+    ? (state.winner === playerId ? "YOU LIVED" : "ROUND LOST")
+    : state.phase === "lobby"
+      ? "WAITING"
+      : isMyTurn
+        ? "YOUR TURN"
+        : "STAND BY";
+  $("turnTitle").classList.toggle("hot", isMyTurn);
+  $("life").innerHTML = lifeMeter(me ? me.lives : 0, maxLives);
+  $("life").setAttribute("aria-label", `${me ? me.lives : 0} life remaining`);
+  $("session").textContent = `${state.phase} / ${state.ap}`;
+  $("hudActions").classList.toggle("hidden", playerId < 0);
+  $("shot").classList.toggle("hidden", playerId < 0 || state.phase === "lobby" || state.winner >= 0);
+  $("adminToggle").classList.toggle("hidden", !isAdmin);
+  if (!isAdmin) $("adminPanel").classList.add("hidden");
+  $("joinPanel").classList.toggle("hidden", playerId >= 0);
+  $("message").textContent = state.message || "";
+
+  $("targets").innerHTML = [
+    {slot: 1, label: "Opp1", pos: "top"},
+    {slot: 2, label: "Opp2", pos: "right"},
+    {slot: 3, label: "Opp3", pos: "left"},
+    {slot: 0, label: "You", pos: "bottom"}
+  ].map(({slot, label, pos}) => {
+    const player = playerBySlot(slot);
+    const online = Boolean(player && player.alive);
+    const active = player && selectedTarget === player.id ? " active" : "";
+    const disabled = online ? "" : " disabled";
+    const status = online ? escapeHtml(player.name) : "X";
+    return `<button class="target-box target-${pos}${active}"${disabled} onclick="chooseSlot(${slot})">
+      <span>${label}</span>
+      <small>${status}</small>
+    </button>`;
+  }).join("");
+
   $("inventory").innerHTML = items.map((name, i) => {
     const count = me ? me.inv[i] : 0;
-    return `<button ${count ? "" : "disabled"} onclick="useItem('${name}')">${itemLabel(name)} (${count})</button>`;
+    return `<button onclick="useItem('${name}')">${itemLabel(name)} <small>debug ${count}</small></button>`;
   }).join("");
 }
 
-window.selectTarget = (id) => {
+window.chooseTarget = async (id) => {
   selectedTarget = id;
-  render();
+  $("targetDialog").classList.add("hidden");
+  await arm(id);
+};
+
+window.chooseSlot = async (slot) => {
+  const player = playerBySlot(slot);
+  if (!player || !player.alive) return;
+  await chooseTarget(player.id);
 };
 
 async function refresh() {
+  if (demoMode) {
+    render();
+    return;
+  }
   state = await api(`/api/state?pid=${playerId}`);
-  if (playerId >= 0 && !state.you) {
-    const savedName = localStorage.getItem("buckshotPlayerName") || "";
+  const storedJoin = localStorage.getItem("buckshotJoinPath") || "";
+  if (storedJoin && state.join && storedJoin !== state.join) {
     clearSession();
-    if (savedName && state.phase === "lobby" && !autoJoinInFlight) {
-      autoJoinInFlight = true;
-      try {
-        await join(savedName);
-        return;
-      } catch (e) {
-        state.message = e.message;
-      } finally {
-        autoJoinInFlight = false;
-      }
-    }
+    state.message = "ESP reset detected. Sign in again.";
+  } else if (playerId >= 0 && !state.you) {
+    clearSession();
+    state.message = "Session expired. Sign in again.";
   }
   render();
 }
 
-async function join(nameOverride) {
-  const name = (nameOverride || $("name").value).trim() || `P${Math.floor(Math.random() * 100)}`;
-  const r = await api("/api/register", {name});
-  playerId = r.pid;
-  isAdmin = r.admin === 1;
-  localStorage.setItem("buckshotPlayerId", String(playerId));
-  localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
-  localStorage.setItem("buckshotPlayerName", name);
-  await refresh();
+async function join() {
+  try {
+    const typed = $("name").value.trim();
+    const name = typed || `P${Math.floor(Math.random() * 1000)}`;
+    const r = await api("/api/register", {name});
+    playerId = r.pid;
+    isAdmin = r.admin === 1;
+    localStorage.setItem("buckshotPlayerId", String(playerId));
+    localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
+    localStorage.setItem("buckshotPlayerName", name);
+    if (state && state.join) localStorage.setItem("buckshotJoinPath", state.join);
+    $("joinStatus").textContent = "";
+    await refresh();
+  } catch (e) {
+    $("joinStatus").textContent = e.message;
+  }
 }
 
 async function setup() {
-  await api("/api/setup", {
-    pid: playerId,
-    lives: $("lives").value,
-    shells: $("shells").value,
-    live: $("live").value,
-    items: $("items").value
-  });
-  await refresh();
+  try {
+    await api("/api/setup", {
+      pid: playerId,
+      lives: $("lives").value,
+      shells: $("shells").value,
+      live: $("live").value,
+      items: $("items").value
+    });
+    $("adminStatus").textContent = "Setup saved";
+    await refresh();
+  } catch (e) {
+    $("adminStatus").textContent = e.message;
+  }
 }
 
 async function start() {
-  await api("/api/start", {pid: playerId});
-  await refresh();
+  try {
+    await api("/api/start", {pid: playerId});
+    $("adminStatus").textContent = "Round started";
+    await refresh();
+  } catch (e) {
+    $("adminStatus").textContent = e.message;
+  }
 }
 
 async function reset() {
-  await api("/api/reset", {pid: playerId});
-  clearSession();
-  await refresh();
-}
-
-async function toggleWriteMode() {
-  await api("/api/write-mode", {pid: playerId});
-  await refresh();
+  try {
+    await api("/api/reset", {pid: playerId});
+    clearSession();
+    $("adminPanel").classList.add("hidden");
+    await refresh();
+  } catch (e) {
+    $("adminStatus").textContent = e.message;
+  }
 }
 
 async function arm(target) {
+  if (demoMode) {
+    state.message = target === playerId ? "barrel turned inward" : "target locked";
+    state.current = playerId;
+    render();
+    return;
+  }
   await api("/api/arm", {pid: playerId, target});
   await refresh();
 }
 
 async function useItem(item) {
-  await api("/api/item", {pid: playerId, item, target: selectedTarget});
-  await refresh();
+  if (demoMode) {
+    $("nfc").textContent = `Debug read ${itemLabel(item)}`;
+    state.message = `${itemLabel(item)} tag read`;
+    render();
+    return;
+  }
+  try {
+    await api("/api/scan", {pid: playerId, payload: `buckshot:item:${item}:debug`});
+    $("nfc").textContent = `Debug read ${itemLabel(item)}`;
+    await refresh();
+  } catch (e) {
+    $("nfc").textContent = e.message;
+  }
 }
 
 async function scanNfc() {
@@ -167,8 +274,7 @@ async function scanNfc() {
       let payload = "";
       for (const record of event.message.records) {
         if (record.recordType === "text") {
-          const text = new TextDecoder(record.encoding || "utf-8").decode(record.data);
-          payload = text;
+          payload = new TextDecoder(record.encoding || "utf-8").decode(record.data);
         }
       }
       if (!payload) payload = `serial:${event.serialNumber}`;
@@ -181,102 +287,39 @@ async function scanNfc() {
   }
 }
 
-function nfcRecordText(record) {
-  const type = record.recordType || "unknown";
-  if (record.recordType === "text") {
-    return new TextDecoder(record.encoding || "utf-8").decode(record.data);
-  }
-  if (record.recordType === "url") {
-    return new TextDecoder().decode(record.data);
-  }
-  return `${type} (${record.mediaType || "no media type"})`;
-}
-
-async function testNfcRead(targetId = "nfc") {
-  try {
-    if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
-    const reader = new NDEFReader();
-    await reader.scan();
-    $(targetId).textContent = "Tap an NFC tag";
-    reader.onreading = (event) => {
-      const records = [...event.message.records].map((record, index) => {
-        return `${index + 1}. ${record.recordType}: ${nfcRecordText(record)}`;
-      });
-      $(targetId).textContent = [
-        `Serial: ${event.serialNumber || "none"}`,
-        `Records: ${records.length}`,
-        ...records
-      ].join("\n");
-    };
-  } catch (e) {
-    $(targetId).textContent = e.message;
-  }
-}
-
-function openWriteDialog() {
-  if (!state || !state.write_mode) {
-    $("writeStatus").textContent = "Enable NFC write mode first";
-    return;
-  }
-  $("writePrompt").textContent = "Choose an item to write.";
-  $("writeProgress").textContent = "";
-  $("writer").classList.remove("hidden");
-  $("nfcWriteDialog").classList.remove("hidden");
-}
-
-async function writeItem(item) {
-  if (writeAbort) return;
-  try {
-    if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
-    writeAbort = new AbortController();
-    $("writePrompt").textContent = `Approach NFC tag to write ${itemLabel(item)}.`;
-    $("writeProgress").textContent = "Waiting for tag";
-    $("writer").classList.add("hidden");
-    $("nfcWriteDialog").classList.remove("hidden");
-    const r = await api("/api/write-token", {pid: playerId, item});
-    const writer = new NDEFReader();
-    await writer.write(
-      {records: [{recordType: "text", data: r.payload}]},
-      {signal: writeAbort.signal}
-    );
-    $("writeStatus").textContent = `Wrote ${itemLabel(item)}`;
-    $("writeProgress").textContent = "Tag written";
-  } catch (e) {
-    const message = e.name === "AbortError" ? "Write cancelled" : e.message;
-    $("writeStatus").textContent = message;
-    $("writeProgress").textContent = message;
-  } finally {
-    writeAbort = null;
-    setTimeout(() => {
-      $("nfcWriteDialog").classList.add("hidden");
-      $("writer").classList.remove("hidden");
-    }, 450);
-  }
-}
-
-function cancelWrite() {
-  if (writeAbort) {
-    writeAbort.abort();
-  } else {
-    $("nfcWriteDialog").classList.add("hidden");
-  }
-}
-
-$("refresh").onclick = refresh;
-$("join").onclick = () => join();
+$("shot").onclick = () => $("targetDialog").classList.remove("hidden");
+$("adminToggle").onclick = () => $("adminPanel").classList.toggle("hidden");
+$("closeAdmin").onclick = () => $("adminPanel").classList.add("hidden");
+$("join").onclick = join;
 $("saveSetup").onclick = setup;
 $("start").onclick = start;
 $("reset").onclick = reset;
-$("toggleWriteMode").onclick = toggleWriteMode;
-$("openWriteDialog").onclick = openWriteDialog;
-$("armSelf").onclick = () => arm(playerId);
-$("armTarget").onclick = () => arm(selectedTarget);
+$("closeTarget").onclick = () => $("targetDialog").classList.add("hidden");
+$("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");
+$("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
-$("testNfc").onclick = () => testNfcRead("nfc");
-$("testNfcAdmin").onclick = () => testNfcRead("writeStatus");
-$("cancelWrite").onclick = cancelWrite;
-$("writer").innerHTML = items.map((item) => `<button onclick="writeItem('${item}')">${itemLabel(item)}</button>`).join("");
-$("name").value = localStorage.getItem("buckshotPlayerName") || "";
 
-refresh().catch((e) => $("message").textContent = e.message);
+document.addEventListener("pointerdown", lockLandscape, {once: true});
+document.addEventListener("keydown", lockLandscape, {once: true});
+
+async function boot() {
+  try {
+    await refresh();
+  } catch (e) {
+    try {
+      state = await api("/api/state?pid=-1");
+      state.message = e.message;
+      clearSession();
+      render();
+    } catch {
+      demoMode = true;
+      playerId = 0;
+      selectedTarget = 1;
+      state = makeDemoState();
+      render();
+    }
+  }
+}
+
+boot();
 setInterval(() => refresh().catch(() => {}), 1500);
