@@ -1393,6 +1393,38 @@ static esp_err_t root_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t cert_handler(httpd_req_t *req)
+{
+    size_t cert_len = server_crt_end - server_crt_start;
+    if (cert_len > 0 && server_crt_start[cert_len - 1] == '\0') {
+        cert_len--;
+    }
+    httpd_resp_set_type(req, "application/x-x509-ca-cert");
+    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=\"buckshot-irl.crt\"");
+    httpd_resp_send(req, (const char *)server_crt_start, cert_len);
+    return ESP_OK;
+}
+
+static esp_err_t http_setup_handler(httpd_req_t *req)
+{
+    char html[1024];
+    snprintf(html, sizeof(html),
+        "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
+        "<title>Buckshot IRL setup</title>"
+        "<body style='font-family:system-ui;background:#111;color:#eee;padding:24px;line-height:1.45'>"
+        "<h1>Buckshot IRL</h1>"
+        "<p>Web NFC needs HTTPS. This device uses a local self-signed certificate for 192.168.4.1.</p>"
+        "<p><a style='color:#8bd3ff;font-size:20px' href='/cert'>Download certificate</a></p>"
+        "<p>Install and trust the certificate for VPN and apps, then open the secure game URL.</p>"
+        "<p><a style='color:#8bd3ff;font-size:20px' href='%s'>Open secure game</a></p>"
+        "<p>If Chrome keeps warning, reconnect to Wi-Fi after trusting the certificate.</p>"
+        "</body>",
+        join_url);
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
 static esp_err_t http_redirect_handler(httpd_req_t *req)
 {
     char location[96];
@@ -1438,6 +1470,7 @@ static void register_post(httpd_handle_t server, const char *uri, esp_err_t (*ha
 static void register_routes(httpd_handle_t server)
 {
     register_get(server, "/", root_handler);
+    register_get(server, "/cert", cert_handler);
     register_get(server, "/join/*", join_handler);
     register_get(server, "/app.css", static_handler);
     register_get(server, "/app.js", static_handler);
@@ -1472,9 +1505,11 @@ static void start_http_redirect_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 2;
+    config.max_uri_handlers = 4;
     httpd_handle_t server = NULL;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
+    register_get(server, "/", http_setup_handler);
+    register_get(server, "/cert", cert_handler);
     register_get(server, "/*", http_redirect_handler);
 }
 

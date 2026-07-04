@@ -101,7 +101,7 @@ AP SSID: Buckshot-A1B2C3
 Join URL: https://192.168.4.1/join/01234567abcdef00
 ```
 
-The AP is open. The playable page is only served through the per-boot `/join/<token>` URL. HTTP on port 80 only redirects to HTTPS.
+The AP is open. The playable page is only served through the per-boot `/join/<token>` URL. HTTP on port 80 serves a small setup page and certificate download, then redirects other paths to HTTPS.
 
 ## HTTPS Certificate
 
@@ -128,7 +128,15 @@ openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
   -addext "subjectAltName=IP:192.168.4.1,DNS:buckshot.local"
 ```
 
-Android Chrome will show a certificate warning because the certificate is self-signed. Open the HTTPS join URL and accept/proceed through the warning before testing Web NFC. If Chrome still treats the page as not secure, install/trust the generated certificate on the phone or use a locally trusted CA for the certificate.
+Certificate setup flow:
+
+1. Connect the phone to the Buckshot AP.
+2. Open `http://192.168.4.1/`.
+3. Download `buckshot-irl.crt` from the setup page, or open `http://192.168.4.1/cert` directly.
+4. Install it as a CA certificate and trust it for VPN and apps.
+5. Open the HTTPS join URL shown on the display or serial monitor.
+
+Android Chrome will show a certificate warning until the certificate is trusted by the phone. If Chrome still treats the page as not secure after trusting it, reconnect to the AP and reopen the join URL.
 
 ## Display Output
 
