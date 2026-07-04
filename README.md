@@ -13,11 +13,11 @@ Let's make killing each other a mostly lighthearted game (yay!) by referencing t
 
 ## Hardware used:
 
-- ESP32-S3 N16R8.
-- 2.4" TFT Display.
+- ESP32-S3 N16R8 acting as the gun connected to the button.
+- 2.4" TFT Display (ILI9341, 240x320, spi, landscape).
 - Mifrare ultralight NFC stickers (40 units for this project).
 - Android smartphones with a chromium-based web browser to interact with NFC.
-- Button (Arcade Button)
+- Button (for the trigger)
 
 
 ## Game flow 
@@ -41,5 +41,11 @@ Possible actions:
 - Remote: reverse the turn order.
 - Shot: You deal damage to a user if you shoot a live shell. If you shoot a blank shell, you don't make damage. If you shoot yourself with a blank round, you continue playing, any other option will make you pass turn.
 
-When the player uses an item, if needed, the phone of the user who used the item will show an apropiate menu of options, e.g. select target player, or watever.
+When the player uses an item, if needed, the phone of the user who used the item will show an apropiate menu with a message, buttons, or watever, e.g. select target player, or watever.
+If an action is something like a magnifying glass (which indicates something about the gun) it will be shown in the gun's display instead of the user's phone.
 
+
+## Software
+
+The software is divided into two parts: the gun and the web app.
+All of the code will run in the esp32-S3, which will act as a web server and will serve the web app to the players. The gun will also handle the game logic, including the randomization of the shells and the management of player turns.
