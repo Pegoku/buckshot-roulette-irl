@@ -10,6 +10,7 @@
 #include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_event.h"
+#include "esp_https_server.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "esp_mac.h"
@@ -127,6 +128,11 @@ static char ap_ssid[32];
 static char join_token[17];
 static char join_path[32];
 static char join_url[64];
+
+extern const unsigned char server_crt_start[] asm("_binary_server_crt_start");
+extern const unsigned char server_crt_end[] asm("_binary_server_crt_end");
+extern const unsigned char server_key_start[] asm("_binary_server_key_start");
+extern const unsigned char server_key_end[] asm("_binary_server_key_end");
 
 static const uint8_t digit_font[10][5] = {
     {0x7, 0x5, 0x5, 0x5, 0x7},
@@ -1235,12 +1241,31 @@ static esp_err_t send_file(httpd_req_t *req, const char *path)
 
 static esp_err_t root_handler(httpd_req_t *req)
 {
-    const char *html =
+    char html[512];
+    snprintf(html, sizeof(html),
         "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
         "<title>Buckshot IRL</title><body style='font-family:system-ui;background:#111;color:#eee;padding:24px'>"
-        "<h1>Buckshot IRL</h1><p>Scan the gun QR or use the serial join URL to enter this session.</p></body>";
+        "<h1>Buckshot IRL</h1><p>Use HTTPS for Web NFC.</p>"
+        "<p><a style='color:#8bd3ff' href='%s'>Open secure join page</a></p></body>",
+        join_url);
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+static esp_err_t http_redirect_handler(httpd_req_t *req)
+{
+    char location[96];
+    if (strcmp(req->uri, "/") == 0) {
+        snprintf(location, sizeof(location), "https://%s/", AP_IP);
+    } else {
+        char uri[64];
+        strlcpy(uri, req->uri, sizeof(uri));
+        snprintf(location, sizeof(location), "https://%s%s", AP_IP, uri);
+    }
+    httpd_resp_set_status(req, "302 Found");
+    httpd_resp_set_hdr(req, "Location", location);
+    httpd_resp_send(req, "HTTPS required", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
@@ -1270,13 +1295,8 @@ static void register_post(httpd_handle_t server, const char *uri, esp_err_t (*ha
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &route));
 }
 
-static void start_webserver(void)
+static void register_routes(httpd_handle_t server)
 {
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 16;
-    httpd_handle_t server = NULL;
-    ESP_ERROR_CHECK(httpd_start(&server, &config));
     register_get(server, "/", root_handler);
     register_get(server, "/join/*", join_handler);
     register_get(server, "/app.css", static_handler);
@@ -1291,6 +1311,31 @@ static void start_webserver(void)
     register_post(server, "/api/write-token", api_write_token);
     register_post(server, "/api/write-mode", api_write_mode);
     register_post(server, "/api/reset", api_reset);
+}
+
+static void start_https_server(void)
+{
+    httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
+    config.httpd.uri_match_fn = httpd_uri_match_wildcard;
+    config.httpd.max_uri_handlers = 16;
+    config.servercert = server_crt_start;
+    config.servercert_len = server_crt_end - server_crt_start;
+    config.prvtkey_pem = server_key_start;
+    config.prvtkey_len = server_key_end - server_key_start;
+
+    httpd_handle_t server = NULL;
+    ESP_ERROR_CHECK(httpd_ssl_start(&server, &config));
+    register_routes(server);
+}
+
+static void start_http_redirect_server(void)
+{
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.uri_match_fn = httpd_uri_match_wildcard;
+    config.max_uri_handlers = 2;
+    httpd_handle_t server = NULL;
+    ESP_ERROR_CHECK(httpd_start(&server, &config));
+    register_get(server, "/*", http_redirect_handler);
 }
 
 static void start_spiffs(void)
@@ -1408,7 +1453,7 @@ void app_main(void)
     load_tokens_locked();
     unlock_game();
     make_ids();
-    snprintf(join_url, sizeof(join_url), "http://%s%s", AP_IP, join_path);
+    snprintf(join_url, sizeof(join_url), "https://%s%s", AP_IP, join_path);
 
     ESP_LOGI(TAG, "AP SSID: %s", ap_ssid);
     ESP_LOGI(TAG, "Join URL: %s", join_url);
@@ -1416,7 +1461,8 @@ void app_main(void)
     start_spiffs();
     lcd_init();
     start_wifi_ap();
-    start_webserver();
+    start_https_server();
+    start_http_redirect_server();
 
     xTaskCreatePinnedToCore(button_task, "button", 2048, NULL, 10, NULL, 0);
     xTaskCreatePinnedToCore(game_task, "game", 4096, NULL, 8, NULL, 0);

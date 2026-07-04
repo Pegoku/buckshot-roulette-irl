@@ -7,7 +7,7 @@ It includes:
 - ILI9341 SPI display output
 - physical trigger button
 - open ESP32-S3 Wi-Fi access point
-- QR/token-gated web session URL
+- HTTPS QR/token-gated web session URL
 - real QR rendering on the TFT display
 - event-driven display redraws to avoid constant full-screen flashing
 - SPIFFS-hosted web app assets
@@ -96,14 +96,41 @@ On boot, the firmware prints:
 
 ```text
 AP SSID: Buckshot-A1B2C3
-Join URL: http://192.168.4.1/join/01234567abcdef00
+Join URL: https://192.168.4.1/join/01234567abcdef00
 ```
 
-The AP is open. The playable page is only served through the per-boot `/join/<token>` URL.
+The AP is open. The playable page is only served through the per-boot `/join/<token>` URL. HTTP on port 80 only redirects to HTTPS.
+
+## HTTPS Certificate
+
+The firmware embeds a self-signed certificate generated for `192.168.4.1` with a subject alternative name:
+
+```text
+IP:192.168.4.1
+DNS:buckshot.local
+```
+
+Files:
+
+- `certs/server.crt`
+- `certs/server.key`
+
+To regenerate them:
+
+```sh
+mkdir -p certs
+openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+  -keyout certs/server.key \
+  -out certs/server.crt \
+  -subj "/CN=192.168.4.1/O=Buckshot IRL" \
+  -addext "subjectAltName=IP:192.168.4.1,DNS:buckshot.local"
+```
+
+Android Chrome will show a certificate warning because the certificate is self-signed. Open the HTTPS join URL and accept/proceed through the warning before testing Web NFC. If Chrome still treats the page as not secure, install/trust the generated certificate on the phone or use a locally trusted CA for the certificate.
 
 ## Display Output
 
-In lobby, the display shows a real QR code for the per-boot join URL.
+In lobby, the display shows a real QR code for the per-boot HTTPS join URL.
 
 During the game, the display shows a compact numeric status view:
 
