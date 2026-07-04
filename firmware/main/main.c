@@ -895,13 +895,15 @@ static esp_err_t api_state(httpd_req_t *req)
     int pid = query_int(req, "pid", -1);
     lock_game();
     update_player_seen_locked(pid);
+    bool known_player = pid >= 0 && pid < MAX_PLAYERS && game.players[pid].active;
     uint8_t live = live_remaining();
     uint8_t blank = game.shell_count - game.shell_index - live;
     w += snprintf(w, end - w,
                   "{\"ok\":true,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
-                  "\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
+                  "\"you\":%s,\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
                   "\"live_remaining\":%u,\"blank_remaining\":%u,\"armed_target\":%d,",
-                  ap_ssid, join_path, phase_name(game.phase), game.message, game.admin_id, game.player_count, game.current, game.winner,
+                  ap_ssid, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
+                  game.admin_id, game.player_count, game.current, game.winner,
                   game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, game.armed_target);
     if (game.armed_target >= 0 && game.armed_target < MAX_PLAYERS && game.players[game.armed_target].active) {
         w += snprintf(w, end - w, "\"armed_target_name\":\"%s\",", game.players[game.armed_target].name);
@@ -1365,6 +1367,7 @@ static esp_err_t send_file(httpd_req_t *req, const char *path)
         httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "not found");
         return ESP_OK;
     }
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
     httpd_resp_set_type(req, content_type_for(path));
     char chunk[512];
     size_t read;

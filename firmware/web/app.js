@@ -4,6 +4,7 @@ let isAdmin = localStorage.getItem("buckshotAdmin") === "1";
 let selectedTarget = -1;
 let state = null;
 let writeAbort = null;
+let autoJoinInFlight = false;
 
 const $ = (id) => document.getElementById(id);
 
@@ -37,6 +38,14 @@ function itemLabel(name) {
     glass: "Magnifier",
     remote: "Remote"
   }[name] || name;
+}
+
+function clearSession() {
+  localStorage.removeItem("buckshotPlayerId");
+  localStorage.removeItem("buckshotAdmin");
+  playerId = -1;
+  isAdmin = false;
+  selectedTarget = -1;
 }
 
 function render() {
@@ -81,16 +90,32 @@ window.selectTarget = (id) => {
 
 async function refresh() {
   state = await api(`/api/state?pid=${playerId}`);
+  if (playerId >= 0 && !state.you) {
+    const savedName = localStorage.getItem("buckshotPlayerName") || "";
+    clearSession();
+    if (savedName && state.phase === "lobby" && !autoJoinInFlight) {
+      autoJoinInFlight = true;
+      try {
+        await join(savedName);
+        return;
+      } catch (e) {
+        state.message = e.message;
+      } finally {
+        autoJoinInFlight = false;
+      }
+    }
+  }
   render();
 }
 
-async function join() {
-  const name = $("name").value.trim() || `P${Math.floor(Math.random() * 100)}`;
+async function join(nameOverride) {
+  const name = (nameOverride || $("name").value).trim() || `P${Math.floor(Math.random() * 100)}`;
   const r = await api("/api/register", {name});
   playerId = r.pid;
   isAdmin = r.admin === 1;
   localStorage.setItem("buckshotPlayerId", String(playerId));
   localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
+  localStorage.setItem("buckshotPlayerName", name);
   await refresh();
 }
 
@@ -112,10 +137,7 @@ async function start() {
 
 async function reset() {
   await api("/api/reset", {pid: playerId});
-  localStorage.removeItem("buckshotPlayerId");
-  localStorage.removeItem("buckshotAdmin");
-  playerId = -1;
-  isAdmin = false;
+  clearSession();
   await refresh();
 }
 
@@ -191,7 +213,7 @@ function cancelWrite() {
 }
 
 $("refresh").onclick = refresh;
-$("join").onclick = join;
+$("join").onclick = () => join();
 $("saveSetup").onclick = setup;
 $("start").onclick = start;
 $("reset").onclick = reset;
@@ -201,6 +223,7 @@ $("armTarget").onclick = () => arm(selectedTarget);
 $("scan").onclick = scanNfc;
 $("cancelWrite").onclick = cancelWrite;
 $("writer").innerHTML = items.map((item) => `<button onclick="writeItem('${item}')">${itemLabel(item)}</button>`).join("");
+$("name").value = localStorage.getItem("buckshotPlayerName") || "";
 
 refresh().catch((e) => $("message").textContent = e.message);
 setInterval(() => refresh().catch(() => {}), 1500);
