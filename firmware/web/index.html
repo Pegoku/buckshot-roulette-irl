@@ -69,9 +69,35 @@
     <div class="admin-actions">
       <button id="saveSetup" type="button">Save setup</button>
       <button id="start" type="button">Start round</button>
+      <button id="nfcAdmin" type="button">NFC</button>
       <button id="reset" type="button">Reset</button>
     </div>
     <p id="adminStatus" class="message"></p>
+  </div>
+
+  <div id="nfcPanel" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="nfcTitle">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h2 id="nfcTitle">Admin NFC</h2>
+        <button id="closeNfc" type="button">Close</button>
+      </div>
+      <div class="nfc-actions">
+        <button id="testNfc" type="button">Test NFC</button>
+        <button id="writeNfc" type="button">Write NFC</button>
+      </div>
+      <p id="nfcAdminStatus" class="message"></p>
+    </div>
+  </div>
+
+  <div id="nfcWritePanel" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="nfcWriteTitle">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h2 id="nfcWriteTitle">Write item</h2>
+        <button id="cancelNfcWrite" type="button">Cancel</button>
+      </div>
+      <div id="nfcWriteItems" class="inventory-grid"></div>
+      <p id="nfcWriteStatus" class="message"></p>
+    </div>
   </div>
 
   <div id="debugPanel" class="debug-panel hidden">

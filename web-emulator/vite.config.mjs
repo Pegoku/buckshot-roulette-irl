@@ -281,6 +281,36 @@ function mockEspApi() {
             return;
           }
 
+          if (url.pathname === "/api/write-mode") {
+            if (!isAdmin(pid) || game.phase !== "lobby") {
+              sendJson(res, 400, {ok: false, error: "admin lobby only"});
+              return;
+            }
+            game.write_mode = !game.write_mode;
+            game.message = `NFC write mode ${game.write_mode ? "on" : "off"}`;
+            sendJson(res, 200, {ok: true});
+            return;
+          }
+
+          if (url.pathname === "/api/write-token") {
+            if (!isAdmin(pid)) {
+              sendJson(res, 400, {ok: false, error: "admin only"});
+              return;
+            }
+            if (!game.write_mode) {
+              sendJson(res, 400, {ok: false, error: "enable NFC write mode"});
+              return;
+            }
+            const item = String(body.get("item") || "");
+            if (!items.includes(item)) {
+              sendJson(res, 400, {ok: false, error: "admin only"});
+              return;
+            }
+            const payload = `buckshot:item:${item}:${Math.random().toString(16).slice(2, 10)}`;
+            sendJson(res, 200, {ok: true, payload});
+            return;
+          }
+
           if (url.pathname === "/api/reset") {
             if (!isAdmin(pid)) {
               sendJson(res, 400, {ok: false, error: "admin only"});

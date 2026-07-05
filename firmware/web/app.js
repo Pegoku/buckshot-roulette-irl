@@ -6,6 +6,7 @@ let state = null;
 let demoMode = false;
 let wakeLock = null;
 let lastLifeKey = "";
+let nfcAbort = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -82,6 +83,45 @@ function itemLabel(name) {
     glass: "Magnifier",
     remote: "Remote"
   }[name] || name;
+}
+
+function stopNfcOperation() {
+  if (nfcAbort) {
+    nfcAbort.abort();
+    nfcAbort = null;
+  }
+}
+
+function payloadInfo(payload) {
+  const text = String(payload || "").trim();
+  const match = /^buckshot:item:([^:]+)(?::(.+))?$/.exec(text);
+  if (!match) {
+    return {valid: false, text, message: text ? `Invalid tag: ${text}` : "No NFC text payload"};
+  }
+  const item = match[1];
+  if (!items.includes(item)) {
+    return {valid: false, text, message: `Unknown item tag: ${item}`};
+  }
+  const token = match[2] || "";
+  return {
+    valid: true,
+    item,
+    text,
+    message: `Valid ${itemLabel(item)} tag${token ? ` / ${token}` : ""}`
+  };
+}
+
+function payloadFromNfcEvent(event) {
+  for (const record of event.message.records) {
+    if (record.recordType === "text") {
+      return new TextDecoder(record.encoding || "utf-8").decode(record.data);
+    }
+  }
+  return "";
+}
+
+function requireWebNfc() {
+  if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
 }
 
 function makeDemoState() {
@@ -359,6 +399,75 @@ async function scanNfc() {
   }
 }
 
+function openNfcPanel() {
+  $("nfcPanel").classList.remove("hidden");
+  $("nfcAdminStatus").textContent = state && state.write_mode ? "Write mode is on" : "";
+}
+
+function closeNfcPanel() {
+  stopNfcOperation();
+  $("nfcPanel").classList.add("hidden");
+}
+
+async function testNfc() {
+  try {
+    requireWebNfc();
+    stopNfcOperation();
+    const controller = new AbortController();
+    nfcAbort = controller;
+    const reader = new NDEFReader();
+    await reader.scan({signal: controller.signal});
+    $("nfcAdminStatus").textContent = "Approach NFC tag to test";
+    reader.onreading = (event) => {
+      const payload = payloadFromNfcEvent(event);
+      const info = payloadInfo(payload);
+      $("nfcAdminStatus").textContent = info.message;
+      stopNfcOperation();
+    };
+  } catch (e) {
+    if (e.name !== "AbortError") $("nfcAdminStatus").textContent = e.message;
+  }
+}
+
+function openWriteNfcPanel() {
+  $("nfcWriteItems").innerHTML = items.map((name) =>
+    `<button type="button" onclick="writeNfcItem('${name}')">${itemLabel(name)}</button>`
+  ).join("");
+  $("nfcWriteStatus").textContent = "Select an item to write";
+  $("nfcWritePanel").classList.remove("hidden");
+}
+
+function closeWriteNfcPanel() {
+  stopNfcOperation();
+  $("nfcWritePanel").classList.add("hidden");
+}
+
+window.writeNfcItem = async (item) => {
+  try {
+    requireWebNfc();
+    if (!isAdmin) throw new Error("admin only");
+    stopNfcOperation();
+    $("nfcWriteStatus").textContent = `Preparing ${itemLabel(item)} tag`;
+    if (!state || !state.write_mode) {
+      await api("/api/write-mode", {pid: playerId});
+      await refresh();
+    }
+    const token = await api("/api/write-token", {pid: playerId, item});
+    const controller = new AbortController();
+    nfcAbort = controller;
+    $("nfcWriteStatus").textContent = `Approach NFC tag to write ${itemLabel(item)}`;
+    const writer = new NDEFReader();
+    await writer.write({
+      records: [{recordType: "text", data: token.payload}]
+    }, {signal: controller.signal});
+    $("nfcWriteStatus").textContent = `Wrote ${itemLabel(item)} tag`;
+    stopNfcOperation();
+    await refresh();
+  } catch (e) {
+    if (e.name !== "AbortError") $("nfcWriteStatus").textContent = e.message;
+  }
+};
+
 $("shot").onclick = () => $("targetDialog").classList.remove("hidden");
 $("adminToggle").onclick = () => $("adminPanel").classList.toggle("hidden");
 $("closeAdmin").onclick = () => $("adminPanel").classList.add("hidden");
@@ -373,6 +482,11 @@ $("name").addEventListener("keydown", (event) => {
 $("saveSetup").onclick = setup;
 $("start").onclick = start;
 $("reset").onclick = reset;
+$("nfcAdmin").onclick = openNfcPanel;
+$("closeNfc").onclick = closeNfcPanel;
+$("testNfc").onclick = testNfc;
+$("writeNfc").onclick = openWriteNfcPanel;
+$("cancelNfcWrite").onclick = closeWriteNfcPanel;
 $("closeTarget").onclick = () => $("targetDialog").classList.add("hidden");
 $("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");
 $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
