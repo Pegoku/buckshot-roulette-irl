@@ -1,0 +1,3 @@
+pump-handle.step stays at 100% scale, probably needs to be cut
+
+pump.stl and hlaven.stl need to be scaled up 580%, both can fit can fit (hlaven.stl if angled) in 250x250x256mm without cutting
