@@ -158,6 +158,7 @@ function render() {
   $("session").textContent = `${state.phase} / ${state.ap}`;
   $("hudActions").classList.toggle("hidden", playerId < 0);
   $("shot").classList.toggle("hidden", playerId < 0 || state.phase === "lobby" || state.winner >= 0);
+  $("shot").disabled = !isMyTurn;
   $("adminToggle").classList.toggle("hidden", !isAdmin);
   if (!isAdmin) $("adminPanel").classList.add("hidden");
   $("joinPanel").classList.toggle("hidden", playerId >= 0);
