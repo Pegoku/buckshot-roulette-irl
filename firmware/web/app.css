@@ -358,8 +358,8 @@ h2 {
   position: absolute;
   right: 16px;
   top: 72px;
-  width: 88px;
-  height: 88px;
+  width: 176px;
+  height: 176px;
   object-fit: contain;
   image-rendering: pixelated;
   border: 1px solid var(--line);
@@ -631,14 +631,14 @@ h2 {
 
   .life-pack {
     min-height: 54px;
-    max-width: calc(100% - 82px);
+    max-width: calc(100% - 138px);
   }
 
   .self-avatar {
     right: 12px;
     top: 60px;
-    width: 64px;
-    height: 64px;
+    width: 128px;
+    height: 128px;
   }
 
   .life-cell {
