@@ -1050,10 +1050,17 @@ static esp_err_t api_register(httpd_req_t *req)
         return ESP_OK;
     }
     char raw[48] = "";
+    char join[40] = "";
     param_get(body, "name", raw, sizeof(raw));
+    param_get(body, "join", join, sizeof(join));
     sanitize_name(name, sizeof(name), raw);
 
     lock_game();
+    if (strcmp(join, join_path) != 0) {
+        unlock_game();
+        send_error(req, "invalid session");
+        return ESP_OK;
+    }
     if (game.phase != PHASE_LOBBY || game.player_count >= MAX_PLAYERS) {
         unlock_game();
         send_error(req, "registration closed");
@@ -1524,6 +1531,21 @@ static esp_err_t root_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
+static esp_err_t expired_handler(httpd_req_t *req)
+{
+    const char *html =
+        "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
+        "<title>Session expired</title><body style='font-family:system-ui;background:#111;color:#eee;padding:24px'>"
+        "<h1>Session expired</h1>"
+        "<p>This QR/session is no longer valid. Scan the current QR on the device display.</p>"
+        "<script>try{localStorage.clear()}catch(e){}</script>"
+        "</body>";
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
+    httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
 static esp_err_t cert_handler(httpd_req_t *req)
 {
     size_t cert_len = server_crt_end - server_crt_start;
@@ -1575,7 +1597,9 @@ static esp_err_t http_redirect_handler(httpd_req_t *req)
 static esp_err_t join_handler(httpd_req_t *req)
 {
     if (strcmp(req->uri, join_path) != 0) {
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "bad session token");
+        httpd_resp_set_status(req, "302 Found");
+        httpd_resp_set_hdr(req, "Location", "/expired");
+        httpd_resp_send(req, "Session expired", HTTPD_RESP_USE_STRLEN);
         return ESP_OK;
     }
     return send_file(req, "/index.html");
@@ -1602,6 +1626,7 @@ static void register_routes(httpd_handle_t server)
 {
     register_get(server, "/", root_handler);
     register_get(server, "/cert", cert_handler);
+    register_get(server, "/expired", expired_handler);
     register_get(server, "/join/*", join_handler);
     register_get(server, "/app.css", static_handler);
     register_get(server, "/app.js", static_handler);

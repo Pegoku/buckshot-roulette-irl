@@ -12,6 +12,15 @@ let targetItem = "";
 
 const $ = (id) => document.getElementById(id);
 
+function currentJoinPath() {
+  return location.pathname.startsWith("/join/") ? location.pathname : "";
+}
+
+function expireTab() {
+  clearSession();
+  location.replace("/expired");
+}
+
 async function requestFullscreenMode() {
   try {
     if (document.fullscreenEnabled && !document.fullscreenElement) {
@@ -298,10 +307,14 @@ async function refresh() {
     return;
   }
   state = await api(`/api/state?pid=${playerId}`);
+  if (currentJoinPath() && state.join && currentJoinPath() !== state.join) {
+    expireTab();
+    return;
+  }
   const storedJoin = localStorage.getItem("buckshotJoinPath") || "";
   if (storedJoin && state.join && storedJoin !== state.join) {
-    clearSession();
-    state.message = "ESP reset detected. Sign in again.";
+    expireTab();
+    return;
   } else if (playerId >= 0 && !state.you) {
     clearSession();
     state.message = "Session expired. Sign in again.";
@@ -313,7 +326,7 @@ async function join() {
   try {
     const name = $("name").value.trim();
     if (!name) return;
-    const r = await api("/api/register", {name});
+    const r = await api("/api/register", {name, join: currentJoinPath()});
     playerId = r.pid;
     isAdmin = r.admin === 1;
     localStorage.setItem("buckshotPlayerId", String(playerId));
