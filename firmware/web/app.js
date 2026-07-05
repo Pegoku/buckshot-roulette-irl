@@ -7,6 +7,12 @@ let demoMode = false;
 let wakeLock = null;
 let lastLifeKey = "";
 let nfcAbort = null;
+let playerNfcReader = null;
+let playerNfcStarting = false;
+let pendingScanPayload = "";
+let pendingScanItem = "";
+let lastNfcPayload = "";
+let lastNfcAt = 0;
 let targetAction = "shot";
 let targetItem = "";
 
@@ -62,6 +68,7 @@ async function enterImmersiveMode() {
   await requestFullscreenMode();
   await lockLandscape();
   await keepAwake();
+  if (playerId >= 0) startPlayerNfc();
 }
 
 async function api(path, body) {
@@ -142,6 +149,59 @@ function itemNeedsTarget(item) {
 function setNfcStatus(message) {
   $("nfc").textContent = message;
   $("scanStatus").textContent = message;
+}
+
+async function submitScanPayload(payload, target = selectedTarget) {
+  const info = payloadInfo(payload);
+  const me = state && state.players.find((p) => p.id === playerId);
+  const claiming = me && Number(me.pending_scans) > 0;
+  if (!claiming && info.valid && itemNeedsTarget(info.item) && (target < 0 || target === playerId)) {
+    pendingScanPayload = payload;
+    pendingScanItem = info.item;
+    setNfcStatus(`Select a target for ${itemLabel(info.item)}`);
+    openTargetDialog("scanItem", info.item);
+    return;
+  }
+  const result = await api("/api/scan", {pid: playerId, payload, target});
+  await refresh();
+  const updatedMe = state && state.players.find((p) => p.id === playerId);
+  const left = updatedMe ? Number(updatedMe.pending_scans) || 0 : 0;
+  if (result.mode === "claim") {
+    setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` : "Tag accepted. Item scans complete.");
+  } else {
+    setNfcStatus(`Used ${info.valid ? itemLabel(info.item) : "item"}`);
+  }
+}
+
+async function startPlayerNfc() {
+  if (demoMode || playerId < 0 || playerNfcReader || playerNfcStarting) return;
+  try {
+    requireWebNfc();
+    playerNfcStarting = true;
+    const reader = new NDEFReader();
+    await reader.scan();
+    playerNfcReader = reader;
+    setNfcStatus("NFC listening");
+    $("scanRequired").textContent = "NFC listening";
+    $("scanRequired").disabled = true;
+    reader.onreading = async (event) => {
+      const payload = payloadFromNfcEvent(event) || `serial:${event.serialNumber}`;
+      const now = Date.now();
+      if (payload === lastNfcPayload && now - lastNfcAt < 1400) return;
+      lastNfcPayload = payload;
+      lastNfcAt = now;
+      try {
+        await submitScanPayload(payload);
+      } catch (e) {
+        setNfcStatus(e.message);
+      }
+    };
+    reader.onreadingerror = () => setNfcStatus("NFC read failed");
+  } catch (e) {
+    setNfcStatus(e.message);
+  } finally {
+    playerNfcStarting = false;
+  }
 }
 
 function makeDemoState() {
@@ -287,21 +347,30 @@ function render() {
   $("scanPrompt").textContent = pendingScans > 0
     ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"} to continue.`
     : "Item scans complete.";
-  $("scanRequired").textContent = pendingScans > 0 ? `Scan tag (${pendingScans})` : "Done";
-  $("scanRequired").disabled = !needsScans;
+  $("scanRequired").textContent = playerNfcReader ? "NFC listening" : "Start NFC";
+  $("scanRequired").disabled = playerNfcReader || !needsScans;
+  if (playerId >= 0) startPlayerNfc();
 }
 
 function openTargetDialog(action, item = "") {
   targetAction = action;
   targetItem = item;
-  $("targetTitle").textContent = action === "item" ? `Use ${itemLabel(item)}` : "Shoot target";
+  $("targetTitle").textContent = action === "item" || action === "scanItem" ? `Use ${itemLabel(item)}` : "Shoot target";
   $("targetDialog").classList.remove("hidden");
 }
 
 window.chooseTarget = async (id) => {
   selectedTarget = id;
   $("targetDialog").classList.add("hidden");
-  if (targetAction === "item") {
+  if (targetAction === "scanItem") {
+    try {
+      await submitScanPayload(pendingScanPayload, id);
+    } catch (e) {
+      setNfcStatus(e.message);
+    }
+    pendingScanPayload = "";
+    pendingScanItem = "";
+  } else if (targetAction === "item") {
     await useItemWithTarget(targetItem, id);
   } else {
     await arm(id);
@@ -349,6 +418,7 @@ async function join() {
     localStorage.setItem("buckshotPlayerName", name);
     if (state && state.join) localStorage.setItem("buckshotJoinPath", state.join);
     $("joinStatus").textContent = "";
+    await startPlayerNfc();
     await refresh();
   } catch (e) {
     $("joinStatus").textContent = e.message;
@@ -433,28 +503,7 @@ async function useItem(item) {
 }
 
 async function scanNfc() {
-  try {
-    if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
-    const reader = new NDEFReader();
-    await reader.scan();
-    setNfcStatus("Tap an item tag");
-    reader.onreading = async (event) => {
-      let payload = "";
-      for (const record of event.message.records) {
-        if (record.recordType === "text") {
-          payload = new TextDecoder(record.encoding || "utf-8").decode(record.data);
-        }
-      }
-      if (!payload) payload = `serial:${event.serialNumber}`;
-      await api("/api/scan", {pid: playerId, payload});
-      await refresh();
-      const me = state && state.players.find((p) => p.id === playerId);
-      const left = me ? Number(me.pending_scans) || 0 : 0;
-      setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` : "Tag accepted. Item scans complete.");
-    };
-  } catch (e) {
-    setNfcStatus(e.message);
-  }
+  await startPlayerNfc();
 }
 
 function openNfcPanel() {
@@ -551,6 +600,8 @@ $("cancelNfcWrite").onclick = closeWriteNfcPanel;
 $("closeTarget").onclick = () => {
   targetAction = "shot";
   targetItem = "";
+  pendingScanPayload = "";
+  pendingScanItem = "";
   $("targetDialog").classList.add("hidden");
 };
 $("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");

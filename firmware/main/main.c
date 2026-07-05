@@ -1504,27 +1504,15 @@ static void decrement_item(player_t *p, item_t item)
     }
 }
 
-static esp_err_t api_item(httpd_req_t *req)
+static const char *apply_item_locked(player_t *p, item_t item, int target)
 {
-    char body[160], item_name[24];
-    if (read_body(req, body, sizeof(body)) != ESP_OK) {
-        send_error(req, "bad body");
-        return ESP_OK;
-    }
-    int pid = param_int(body, "pid", -1);
-    int target = param_int(body, "target", -1);
-    param_get(body, "item", item_name, sizeof(item_name));
-    item_t item = parse_item(item_name);
-
-    lock_game();
-    player_t *p = player_by_id(pid);
     player_t *t = player_by_id(target);
-    if (game.phase != PHASE_ACTIVE || !p || !p->alive || game.current != pid || item == ITEM_INVALID || p->inv[item] == 0) {
-        unlock_game();
-        send_error(req, "bad item");
-        return ESP_OK;
+    if (game.phase != PHASE_ACTIVE || !p || !p->alive || game.current != p->id || item == ITEM_INVALID || p->inv[item] == 0) {
+        return "bad item";
     }
-
+    if ((item == ITEM_JAMMER || item == ITEM_ADRENALINE) && (!t || !t->alive || t->id == p->id)) {
+        return "select target";
+    }
     decrement_item(p, item);
     switch (item) {
     case ITEM_BEER:
@@ -1562,15 +1550,8 @@ static esp_err_t api_item(httpd_req_t *req)
         set_message("Current shell inverted");
         break;
     case ITEM_JAMMER:
-        if (t && t->alive && t->id != p->id) {
-            t->skip_turn = true;
-            set_message("%s jammed %s", p->name, t->name);
-        } else {
-            p->inv[item]++;
-            unlock_game();
-            send_error(req, "select target");
-            return ESP_OK;
-        }
+        t->skip_turn = true;
+        set_message("%s jammed %s", p->name, t->name);
         break;
     case ITEM_GLASS:
         if (game.shell_index < game.shell_count) {
@@ -1589,24 +1570,40 @@ static esp_err_t api_item(httpd_req_t *req)
         }
         break;
     case ITEM_ADRENALINE:
-        if (t && t->alive && t->id != p->id) {
-            for (int i = 1; i < MAX_ITEMS; i++) {
-                if (t->inv[i]) {
-                    t->inv[i]--;
-                    p->inv[i]++;
-                    set_message("%s stole %s", p->name, item_names[i]);
-                    break;
-                }
+        for (int i = 1; i < MAX_ITEMS; i++) {
+            if (t->inv[i]) {
+                t->inv[i]--;
+                p->inv[i]++;
+                set_message("%s stole %s", p->name, item_names[i]);
+                break;
             }
-        } else {
-            p->inv[item]++;
-            unlock_game();
-            send_error(req, "select target");
-            return ESP_OK;
         }
         break;
     default:
         break;
+    }
+    return NULL;
+}
+
+static esp_err_t api_item(httpd_req_t *req)
+{
+    char body[160], item_name[24];
+    if (read_body(req, body, sizeof(body)) != ESP_OK) {
+        send_error(req, "bad body");
+        return ESP_OK;
+    }
+    int pid = param_int(body, "pid", -1);
+    int target = param_int(body, "target", -1);
+    param_get(body, "item", item_name, sizeof(item_name));
+    item_t item = parse_item(item_name);
+
+    lock_game();
+    player_t *p = player_by_id(pid);
+    const char *err = apply_item_locked(p, item, target);
+    if (err) {
+        unlock_game();
+        send_error(req, err);
+        return ESP_OK;
     }
     unlock_game();
     send_json(req, "{\"ok\":true}");
@@ -1621,6 +1618,7 @@ static esp_err_t api_scan(httpd_req_t *req)
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
+    int target = param_int(body, "target", -1);
     param_get(body, "payload", payload, sizeof(payload));
 
     lock_game();
@@ -1630,15 +1628,17 @@ static esp_err_t api_scan(httpd_req_t *req)
         send_error(req, "unknown player");
         return ESP_OK;
     }
-    if (game.phase != PHASE_ACTIVE || !p->alive || p->pending_item_scans == 0) {
+    if (game.phase != PHASE_ACTIVE || !p->alive) {
         unlock_game();
-        send_error(req, "no item scans needed");
+        send_error(req, "scan unavailable");
         return ESP_OK;
     }
     item_t item = ITEM_INVALID;
+    token_t *matched_token = NULL;
     for (int i = 0; i < MAX_TOKENS; i++) {
         if (game.tokens[i].used && strcmp(game.tokens[i].payload, payload) == 0) {
             item = game.tokens[i].item;
+            matched_token = &game.tokens[i];
             break;
         }
     }
@@ -1656,41 +1656,60 @@ static esp_err_t api_scan(httpd_req_t *req)
         send_error(req, "unknown tag");
         return ESP_OK;
     }
-    if (inventory_count(p) >= MAX_PLAYER_ITEMS) {
-        unlock_game();
-        send_error(req, "item board full");
-        return ESP_OK;
-    }
-    for (int i = 0; i < MAX_TOKENS; i++) {
-        token_t *tok = &game.tokens[i];
-        if (tok->used && strcmp(tok->payload, payload) == 0) {
-            if (tok->consumed) {
+
+    if (p->pending_item_scans > 0) {
+        if (inventory_count(p) >= MAX_PLAYER_ITEMS) {
+            unlock_game();
+            send_error(req, "item board full");
+            return ESP_OK;
+        }
+        if (matched_token) {
+            if (matched_token->consumed) {
                 unlock_game();
                 send_error(req, "tag consumed");
                 return ESP_OK;
             }
-            if (tok->owner == p->id) {
+            if (matched_token->owner == p->id) {
                 unlock_game();
                 send_error(req, "tag already scanned");
                 return ESP_OK;
             }
-            if (tok->owner >= 0 && tok->owner != p->id) {
+            if (matched_token->owner >= 0 && matched_token->owner != p->id) {
                 unlock_game();
                 send_error(req, "tag owned by another player");
                 return ESP_OK;
             }
-            tok->owner = p->id;
+            matched_token->owner = p->id;
             save_tokens_locked();
-            break;
+        }
+        p->inv[item]++;
+        p->pending_item_scans--;
+        set_message("%s scanned %s (%u left)", p->name, item_names[item], p->pending_item_scans);
+        unlock_game();
+        send_json(req, "{\"ok\":true,\"mode\":\"claim\"}");
+        return ESP_OK;
+    }
+
+    if (matched_token) {
+        if (matched_token->consumed) {
+            unlock_game();
+            send_error(req, "tag consumed");
+            return ESP_OK;
+        }
+        if (matched_token->owner != p->id) {
+            unlock_game();
+            send_error(req, "tag not in inventory");
+            return ESP_OK;
         }
     }
-    p->inv[item]++;
-    if (p->pending_item_scans > 0) {
-        p->pending_item_scans--;
+    const char *err = apply_item_locked(p, item, target);
+    if (err) {
+        unlock_game();
+        send_error(req, err);
+        return ESP_OK;
     }
-    set_message("%s scanned %s (%u left)", p->name, item_names[item], p->pending_item_scans);
     unlock_game();
-    send_json(req, "{\"ok\":true}");
+    send_json(req, "{\"ok\":true,\"mode\":\"use\"}");
     return ESP_OK;
 }
 
