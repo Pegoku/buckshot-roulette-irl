@@ -317,14 +317,14 @@ h2 {
   grid-auto-columns: 1fr;
   gap: 6px;
   padding: 8px;
-  border: 1px solid var(--line);
+  /* border: 1px solid var(--line); */
   background: #060906;
 }
 
 .life-cell {
   display: grid;
   place-items: center;
-  border: 1px solid var(--line-dim);
+  /* border: 1px solid var(--line-dim); */
   background: #080c09;
   color: var(--line-dim);
   min-width: 0;

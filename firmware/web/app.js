@@ -128,7 +128,7 @@ function render() {
     if (isMyTurn) {
       title = "YOUR TURN";
     } else {
-      title = `${currentPlayer ? currentPlayer.name : "SOMEONE"} is gambling with your lives`;
+      title = `${currentPlayer ? currentPlayer.name : "SOMEONE"} has your lives at stake`;
       ticker = true;
     }
   }
@@ -144,7 +144,7 @@ function render() {
   const syncTicker = () => {
     const trackItem = turnTitle.querySelector(".ticker-track span");
     const distance = trackItem ? Math.ceil(trackItem.scrollWidth + 48) : turnTitle.clientWidth;
-    const duration = Math.max(4, distance / 34);
+    const duration = Math.max(2.4, distance / 72);
     turnTitle.style.setProperty("--ticker-distance", `-${distance}px`);
     turnTitle.style.setProperty("--ticker-duration", `${duration}s`);
   };
