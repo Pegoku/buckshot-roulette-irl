@@ -56,9 +56,9 @@
 #define PLAYER_TIMEOUT_MS 20000
 #define PLAYER_TIMEOUT_RETRY_MS 2000
 #define PLAYER_TIMEOUT_RETRIES 3
-#define TFT_SHOT_ANIM_MS 900
-#define TFT_SHOT_BULLET_MS 500
-#define TFT_ROUND_REVEAL_MS 2600
+#define TFT_SHOT_ANIM_MS 1600
+#define TFT_SHOT_BULLET_MS 450
+#define TFT_ROUND_REVEAL_MS 5200
 #define TFT_ROUND_REVEAL_DELAY_MS 4200
 
 #define COLOR_BLACK 0x0000
@@ -527,6 +527,21 @@ static void tft_render_now(void)
     lv_refr_now(lvgl_disp);
 }
 
+static bool elapsed_window(uint32_t now, uint32_t start, uint32_t duration, uint32_t *elapsed)
+{
+    if ((int32_t)(now - start) < 0) {
+        return false;
+    }
+    uint32_t age = now - start;
+    if (age >= duration) {
+        return false;
+    }
+    if (elapsed) {
+        *elapsed = age;
+    }
+    return true;
+}
+
 static uint8_t snap_live_remaining(const game_t *snap)
 {
     uint8_t live = 0;
@@ -601,7 +616,7 @@ static void tft_shot_fx_sprite(lv_obj_t *parent, bool live, uint8_t variant, uin
     lv_obj_t *img = lv_img_create(parent);
     lv_img_set_src(img, frames[frame]);
     lv_obj_set_pos(img, x, y);
-    lv_img_set_zoom(img, live ? 520 : 340);
+    lv_img_set_zoom(img, live ? 680 : 440);
     lv_img_set_pivot(img, 32, 32);
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
 }
@@ -615,7 +630,7 @@ static void tft_round_shell_intro(lv_obj_t *parent, const game_t *snap, uint32_t
     lv_obj_set_style_bg_color(shade, lv_color_hex(0x020604), 0);
     lv_obj_set_style_bg_opa(shade, LV_OPA_70, 0);
 
-    lv_obj_t *panel = tft_panel(parent, 22, 70, 276, 100, lv_color_hex(0xffd447), LV_OPA_80);
+    lv_obj_t *panel = tft_panel(parent, 10, 78, 300, 132, lv_color_hex(0xffd447), LV_OPA_80);
     char round[24];
     snprintf(round, sizeof(round), "ROUND %u", snap->round);
     tft_label(panel, round, 12, 10, lv_color_hex(0xffd447), 1);
@@ -627,8 +642,13 @@ static void tft_round_shell_intro(lv_obj_t *parent, const game_t *snap, uint32_t
         return;
     }
 
-    uint32_t reveal_ms = 1050;
-    uint32_t group_ms = 420;
+    uint32_t per_shell_ms = 430;
+    uint32_t reveal_ms = total * per_shell_ms;
+    uint32_t hold_ms = 520;
+    uint32_t group_ms = 850;
+    if (reveal_ms > 3500) {
+        reveal_ms = 3500;
+    }
     uint8_t shown = total;
     if (elapsed_ms < reveal_ms) {
         shown = (elapsed_ms * total) / reveal_ms + 1;
@@ -637,16 +657,19 @@ static void tft_round_shell_intro(lv_obj_t *parent, const game_t *snap, uint32_t
         }
     }
 
-    int spacing = 30;
+    int spacing = 32;
     int slide = 0;
-    if (elapsed_ms > reveal_ms) {
-        uint32_t group_elapsed = elapsed_ms - reveal_ms;
+    if (elapsed_ms > reveal_ms + hold_ms) {
+        uint32_t group_elapsed = elapsed_ms - reveal_ms - hold_ms;
         if (group_elapsed < group_ms) {
-            spacing = 30 - (int)((group_elapsed * 12) / group_ms);
+            spacing = 32 - (int)((group_elapsed * 14) / group_ms);
         } else {
             spacing = 18;
             uint32_t slide_elapsed = group_elapsed - group_ms;
-            uint32_t slide_ms = TFT_ROUND_REVEAL_MS - reveal_ms - group_ms;
+            uint32_t slide_ms = TFT_ROUND_REVEAL_MS - reveal_ms - hold_ms - group_ms;
+            if (slide_ms == 0) {
+                slide_ms = 1;
+            }
             if (slide_elapsed > slide_ms) {
                 slide_elapsed = slide_ms;
             }
@@ -655,11 +678,11 @@ static void tft_round_shell_intro(lv_obj_t *parent, const game_t *snap, uint32_t
     }
 
     int width = (shown - 1) * spacing + 25;
-    int x0 = 138 - width / 2 + slide;
-    int y = 34;
+    int x0 = 150 - width / 2 + slide;
+    int y = 48;
     for (uint8_t i = 0; i < shown; i++) {
         bool shell_live = i >= blank;
-        tft_shell_sprite(panel, shell_live, x0 + i * spacing, y, 205, 0, LV_OPA_COVER);
+        tft_shell_sprite(panel, shell_live, x0 + i * spacing, y, 270, 0, LV_OPA_COVER);
     }
 }
 
@@ -781,8 +804,9 @@ static void lcd_draw_game_screen(void)
     uint32_t shot_elapsed = snap.last_shot_valid ? (uint32_t)(now - snap.last_shot_ms) : UINT32_MAX;
     bool shot_anim_active = snap.last_shot_valid && shot_elapsed < TFT_SHOT_ANIM_MS;
 
-    if (snap.phase == PHASE_ACTIVE && now - snap.round_started_ms < TFT_ROUND_REVEAL_MS) {
-        tft_round_shell_intro(root, &snap, now - snap.round_started_ms);
+    uint32_t round_intro_elapsed = 0;
+    if (snap.phase == PHASE_ACTIVE && elapsed_window(now, snap.round_started_ms, TFT_ROUND_REVEAL_MS, &round_intro_elapsed)) {
+        tft_round_shell_intro(root, &snap, round_intro_elapsed);
     } else if (snap.phase == PHASE_ACTIVE && now - snap.phase_started_ms < 4200) {
         uint32_t elapsed = now - snap.phase_started_ms;
         const char *msg = "GET READY";
@@ -824,11 +848,11 @@ static void lcd_draw_game_screen(void)
             tft_shell_sprite(root, snap.last_shot_live, x, y, squash, angle, LV_OPA_COVER);
         } else {
             uint32_t smoke_elapsed = elapsed - TFT_SHOT_BULLET_MS;
-            int fx_x = snap.last_shot_live ? 58 : 74;
-            int fx_y = snap.last_shot_live ? 60 : 72;
+            int fx_x = snap.last_shot_live ? 74 : 102;
+            int fx_y = snap.last_shot_live ? 66 : 88;
             tft_shot_fx_sprite(root, snap.last_shot_live, snap.last_shot_fx_variant, smoke_elapsed, fx_x + shake, fx_y - (shake / 2));
             const char *label = snap.last_shot_live ? "BANG" : "PUFF";
-            tft_label(root, label, 116 + shake, 132, snap.last_shot_live ? lv_color_hex(0xff4a3d) : lv_color_hex(0xd8e6d6), 2);
+            tft_label(root, label, 116 + shake, 144, snap.last_shot_live ? lv_color_hex(0xff4a3d) : lv_color_hex(0xd8e6d6), 2);
         }
     }
 
@@ -1211,7 +1235,14 @@ static void reload_if_needed(void)
 {
     if (game.phase == PHASE_ACTIVE && game.shell_index >= game.shell_count) {
         game.round++;
-        game.round_started_ms = now_ms();
+        uint32_t start = now_ms();
+        if (game.last_shot_valid) {
+            uint32_t shot_end = game.last_shot_ms + TFT_SHOT_ANIM_MS + 120;
+            if ((int32_t)(shot_end - start) > 0) {
+                start = shot_end;
+            }
+        }
+        game.round_started_ms = start;
         shuffle_shells();
         request_item_scans();
         set_message("New load: scan %u item tags", pending_scan_total());
@@ -1646,6 +1677,39 @@ static void decrement_item(player_t *p, item_t item)
     }
 }
 
+static token_t *token_by_payload_locked(const char *payload)
+{
+    if (!payload || !payload[0]) {
+        return NULL;
+    }
+    for (int i = 0; i < MAX_TOKENS; i++) {
+        if (game.tokens[i].used && strcmp(game.tokens[i].payload, payload) == 0) {
+            return &game.tokens[i];
+        }
+    }
+    return NULL;
+}
+
+static const char *validate_steal_payload_locked(player_t *target, item_t steal_item, const char *payload, token_t **matched)
+{
+    *matched = NULL;
+    if (!payload || !payload[0]) {
+        return NULL;
+    }
+    token_t *token = token_by_payload_locked(payload);
+    if (!token || token->item != steal_item) {
+        return "wrong steal tag";
+    }
+    if (token->consumed) {
+        return "steal tag consumed";
+    }
+    if (token->owner != target->id) {
+        return "steal tag not target owned";
+    }
+    *matched = token;
+    return NULL;
+}
+
 static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
 {
     switch (item) {
@@ -1710,7 +1774,7 @@ static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
     }
 }
 
-static const char *apply_item_locked(player_t *p, item_t item, int target, item_t steal_item)
+static const char *apply_item_locked(player_t *p, item_t item, int target, item_t steal_item, const char *steal_payload)
 {
     player_t *t = player_by_id(target);
     if (game.phase != PHASE_ACTIVE || !p || !p->alive || game.current != p->id || item == ITEM_INVALID || p->inv[item] == 0) {
@@ -1725,9 +1789,25 @@ static const char *apply_item_locked(player_t *p, item_t item, int target, item_
     if (item == ITEM_ADRENALINE && (steal_item <= ITEM_ADRENALINE || steal_item == ITEM_INVALID || t->inv[steal_item] == 0)) {
         return "select item";
     }
+    token_t *steal_token = NULL;
+    if (item == ITEM_ADRENALINE) {
+        const char *err = validate_steal_payload_locked(t, steal_item, steal_payload, &steal_token);
+        if (err) {
+            return err;
+        }
+    }
     decrement_item(p, item);
     if (item == ITEM_ADRENALINE) {
-        decrement_item(t, steal_item);
+        if (steal_token) {
+            if (t->inv[steal_item] > 0) {
+                t->inv[steal_item]--;
+            }
+            steal_token->consumed = true;
+            save_tokens_locked();
+            mark_display_dirty();
+        } else {
+            decrement_item(t, steal_item);
+        }
         apply_item_effect_locked(p, steal_item, t);
     } else {
         apply_item_effect_locked(p, item, t);
@@ -1737,7 +1817,7 @@ static const char *apply_item_locked(player_t *p, item_t item, int target, item_
 
 static esp_err_t api_item(httpd_req_t *req)
 {
-    char body[180], item_name[24], steal_name[24];
+    char body[280], item_name[24], steal_name[24], steal_payload[64];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
@@ -1746,12 +1826,13 @@ static esp_err_t api_item(httpd_req_t *req)
     int target = param_int(body, "target", -1);
     param_get(body, "item", item_name, sizeof(item_name));
     param_get(body, "steal", steal_name, sizeof(steal_name));
+    param_get(body, "steal_payload", steal_payload, sizeof(steal_payload));
     item_t item = parse_item(item_name);
     item_t steal_item = parse_item(steal_name);
 
     lock_game();
     player_t *p = player_by_id(pid);
-    const char *err = apply_item_locked(p, item, target, steal_item);
+    const char *err = apply_item_locked(p, item, target, steal_item, steal_payload);
     if (err) {
         unlock_game();
         send_error(req, err);
@@ -1764,7 +1845,7 @@ static esp_err_t api_item(httpd_req_t *req)
 
 static esp_err_t api_scan(httpd_req_t *req)
 {
-    char body[200], payload[64], steal_name[24];
+    char body[300], payload[64], steal_name[24], steal_payload[64];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
@@ -1773,6 +1854,7 @@ static esp_err_t api_scan(httpd_req_t *req)
     int target = param_int(body, "target", -1);
     param_get(body, "payload", payload, sizeof(payload));
     param_get(body, "steal", steal_name, sizeof(steal_name));
+    param_get(body, "steal_payload", steal_payload, sizeof(steal_payload));
     item_t steal_item = parse_item(steal_name);
 
     lock_game();
@@ -1864,7 +1946,7 @@ static esp_err_t api_scan(httpd_req_t *req)
             return ESP_OK;
         }
     }
-    const char *err = apply_item_locked(p, item, target, steal_item);
+    const char *err = apply_item_locked(p, item, target, steal_item, steal_payload);
     if (err) {
         unlock_game();
         send_error(req, err);
@@ -2258,8 +2340,9 @@ static void display_task(void *arg)
             }
         }
         if (game.phase == PHASE_ACTIVE) {
+            uint32_t round_elapsed = 0;
             animate = (uint32_t)(now - game.phase_started_ms) < 4200 ||
-                      (uint32_t)(now - game.round_started_ms) < TFT_ROUND_REVEAL_MS ||
+                      elapsed_window(now, game.round_started_ms, TFT_ROUND_REVEAL_MS, &round_elapsed) ||
                       animate ||
                       (game.reveal_shell_valid && (int32_t)(game.reveal_shell_until_ms - now) > 0);
         }

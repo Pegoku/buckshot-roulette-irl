@@ -458,6 +458,8 @@ h2 {
 
 .popup-card {
   width: min(100%, 620px);
+  max-height: calc(100dvh - 36px);
+  overflow: auto;
   padding: 16px;
 }
 
@@ -597,6 +599,32 @@ h2 {
 .inventory-grid {
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
   margin: 14px 0 12px;
+}
+
+#adrenalineTargets {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  grid-template-rows: none;
+  margin-bottom: 14px;
+}
+
+#adrenalineTargets button {
+  min-height: 104px;
+}
+
+#adrenalineItems {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding: 2px 2px 10px;
+  margin: 14px 0 12px;
+  scroll-snap-type: x proximity;
+}
+
+#adrenalineItems button {
+  flex: 0 0 132px;
+  min-height: 64px;
+  scroll-snap-align: start;
 }
 
 .inventory-grid button {

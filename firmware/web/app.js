@@ -207,7 +207,10 @@ function openAdrenalinePanel(payload = "") {
   $("adrenalineItems").innerHTML = "";
   const opponents = (state ? state.players : []).filter((p) => p.id !== playerId && p.alive);
   $("adrenalineTargets").innerHTML = opponents.map((p) =>
-    `<button type="button" onclick="chooseAdrenalineTarget(${p.id})">${escapeHtml(p.name)}</button>`
+    `<button type="button" onclick="chooseAdrenalineTarget(${p.id})">
+      <img class="target-avatar" src="${playerPortraitSrc(p)}" alt="">
+      <span>${escapeHtml(p.name)}</span>
+    </button>`
   ).join("");
 }
 
@@ -228,12 +231,12 @@ window.chooseAdrenalineItem = (item) => {
   $("adrenalineStatus").textContent = `Scan ${itemLabel(item)} tag to verify`;
 };
 
-async function finishAdrenalineUse() {
+async function finishAdrenalineUse(stealPayload = "") {
   if (!adrenalineSteal || adrenalineTarget < 0) return;
   if (adrenalinePayload) {
-    await api("/api/scan", {pid: playerId, payload: adrenalinePayload, target: adrenalineTarget, steal: adrenalineSteal});
+    await api("/api/scan", {pid: playerId, payload: adrenalinePayload, target: adrenalineTarget, steal: adrenalineSteal, steal_payload: stealPayload});
   } else {
-    await api("/api/item", {pid: playerId, item: "adrenaline", target: adrenalineTarget, steal: adrenalineSteal});
+    await api("/api/item", {pid: playerId, item: "adrenaline", target: adrenalineTarget, steal: adrenalineSteal, steal_payload: stealPayload});
   }
   closeAdrenalinePanel();
   await refresh();
@@ -246,7 +249,7 @@ async function handleAdrenalineVerification(payload) {
     $("adrenalineStatus").textContent = `Wrong tag. Scan ${itemLabel(adrenalineSteal)}.`;
     return;
   }
-  await finishAdrenalineUse();
+  await finishAdrenalineUse(payload);
 }
 
 async function submitScanPayload(payload, target = selectedTarget) {
