@@ -148,8 +148,8 @@ function makeDemoState() {
     winner: -1,
     message: "terminal link unstable",
     players: [
-      {id: 0, name: "Operator", lives: 3, alive: true, admin: false, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
-      {id: 1, name: "Dealer", lives: 3, alive: true, admin: false, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
+      {id: 0, name: "Operator", lives: 3, alive: true, admin: false, pending_scans: 2, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
+      {id: 1, name: "Dealer", lives: 3, alive: true, admin: false, pending_scans: 2, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
     ]
   };
 }
@@ -274,6 +274,9 @@ function render() {
     const disabled = !isMyTurn || count <= 0 ? " disabled" : "";
     return `<button type="button"${disabled} onclick="useItem('${name}')">${itemLabel(name)} <small>${count}</small></button>`;
   }).join("");
+  const pendingScans = me ? Number(me.pending_scans) || 0 : 0;
+  $("scan").textContent = pendingScans > 0 ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"}` : "No item scans";
+  $("scan").disabled = playerId < 0 || state.phase !== "active" || pendingScans <= 0;
 }
 
 function openTargetDialog(action, item = "") {
@@ -432,8 +435,10 @@ async function scanNfc() {
       }
       if (!payload) payload = `serial:${event.serialNumber}`;
       await api("/api/scan", {pid: playerId, payload});
-      $("nfc").textContent = `Scanned ${payload}`;
       await refresh();
+      const me = state && state.players.find((p) => p.id === playerId);
+      const left = me ? Number(me.pending_scans) || 0 : 0;
+      $("nfc").textContent = left > 0 ? `Tag accepted. Scan ${left} more.` : "Tag accepted. Item scans complete.";
     };
   } catch (e) {
     $("nfc").textContent = e.message;

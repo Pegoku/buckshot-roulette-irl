@@ -88,11 +88,6 @@ function inventoryCount(player) {
   return player.inv.reduce((sum, count) => sum + count, 0);
 }
 
-function randomItem() {
-  const choices = items.filter((name) => name !== "remote" || aliveCount() > 2);
-  return items.indexOf(choices[Math.floor(Math.random() * choices.length)]);
-}
-
 function stateFor(pid) {
   const live = liveRemaining();
   const activePlayers = game.players.filter((p) => p.active);
@@ -120,6 +115,7 @@ function stateFor(pid) {
       lives: p.lives,
       alive: p.alive,
       admin: p.id === game.admin,
+      pending_scans: p.pending_scans || 0,
       inv: p.inv
     }))
   };
@@ -136,14 +132,18 @@ function shuffleShells() {
   game.shell_count = game.shells.length;
 }
 
-function giveItems() {
+function requestItemScans() {
   for (const player of game.players) {
-    if (!player.active || !player.alive) continue;
-    for (let i = 0; i < game.items_per_player; i++) {
-      if (inventoryCount(player) >= 8) break;
-      player.inv[randomItem()]++;
+    if (!player.active || !player.alive) {
+      player.pending_scans = 0;
+      continue;
     }
+    player.pending_scans = Math.min(game.items_per_player, Math.max(0, 8 - inventoryCount(player)));
   }
+}
+
+function pendingScanTotal() {
+  return game.players.reduce((sum, player) => sum + (player.active && player.alive ? player.pending_scans || 0 : 0), 0);
 }
 
 function nextAlive(from) {
@@ -215,6 +215,7 @@ function mockEspApi() {
               alive: true,
               lives: game.max_lives,
               joinOrder: Date.now() + id,
+              pending_scans: 0,
               inv: Array(items.length).fill(0)
             });
             recomputeAdmin();
@@ -259,12 +260,13 @@ function mockEspApi() {
               if (player.active) {
                 player.alive = true;
                 player.lives = game.max_lives;
+                player.pending_scans = 0;
                 player.inv = Array(items.length).fill(0);
               }
             }
             shuffleShells();
-            giveItems();
-            game.message = "Round started";
+            requestItemScans();
+            game.message = `Round started: scan ${pendingScanTotal()} item tags`;
             sendJson(res, 200, {ok: true});
             return;
           }
@@ -299,7 +301,8 @@ function mockEspApi() {
             }
             if (game.phase === "active" && game.shell_index >= game.shell_count) {
               shuffleShells();
-              game.message += " / reloaded";
+              requestItemScans();
+              game.message = `New load: scan ${pendingScanTotal()} item tags`;
             }
             sendJson(res, 200, {ok: true});
             return;
@@ -322,7 +325,7 @@ function mockEspApi() {
                 game.message = `Beer ejected a ${live ? "live" : "blank"}`;
                 if (game.shell_index >= game.shell_count) {
                   shuffleShells();
-                  giveItems();
+                  requestItemScans();
                   game.current = nextAlive(pid);
                 }
               }
@@ -344,7 +347,7 @@ function mockEspApi() {
               if (game.shell_index < game.shell_count) game.shells[game.shell_index] = !game.shells[game.shell_index];
               game.message = "Current shell inverted";
             } else if (item === "glass") {
-              game.message = game.shell_index < game.shell_count ? `Current shell is ${game.shells[game.shell_index] ? "live" : "blank"}` : "No shell loaded";
+              game.message = `${player.name} used magnifier`;
             } else if (item === "remote") {
               if (aliveCount() > 2) {
                 game.direction *= -1;
@@ -386,12 +389,17 @@ function mockEspApi() {
               sendJson(res, 400, {ok: false, error: "unknown tag"});
               return;
             }
+            if (game.phase !== "active" || !player.alive || !player.pending_scans) {
+              sendJson(res, 400, {ok: false, error: "no item scans needed"});
+              return;
+            }
             if (inventoryCount(player) >= 8) {
               sendJson(res, 400, {ok: false, error: "item board full"});
               return;
             }
             player.inv[itemIndex]++;
-            game.message = `${player.name} scanned ${items[itemIndex]}`;
+            player.pending_scans = Math.max(0, player.pending_scans - 1);
+            game.message = `${player.name} scanned ${items[itemIndex]} (${player.pending_scans} left)`;
             sendJson(res, 200, {ok: true});
             return;
           }

@@ -1,5 +1,7 @@
 idf_component_register(
-    SRCS "main.c"
+    SRCS
+        "main.c"
+        "assets/tft_sprites.c"
     INCLUDE_DIRS "."
     EMBED_TXTFILES
         "../certs/server.crt"
