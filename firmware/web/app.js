@@ -139,6 +139,11 @@ function itemNeedsTarget(item) {
   return item === "jammer" || item === "adrenaline";
 }
 
+function setNfcStatus(message) {
+  $("nfc").textContent = message;
+  $("scanStatus").textContent = message;
+}
+
 function makeDemoState() {
   return {
     ap: "LOCAL",
@@ -277,6 +282,13 @@ function render() {
   const pendingScans = me ? Number(me.pending_scans) || 0 : 0;
   $("scan").textContent = pendingScans > 0 ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"}` : "No item scans";
   $("scan").disabled = playerId < 0 || state.phase !== "active" || pendingScans <= 0;
+  const needsScans = playerId >= 0 && state.phase === "active" && pendingScans > 0;
+  $("scanPanel").classList.toggle("hidden", !needsScans);
+  $("scanPrompt").textContent = pendingScans > 0
+    ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"} to continue.`
+    : "Item scans complete.";
+  $("scanRequired").textContent = pendingScans > 0 ? `Scan tag (${pendingScans})` : "Done";
+  $("scanRequired").disabled = !needsScans;
 }
 
 function openTargetDialog(action, item = "") {
@@ -425,7 +437,7 @@ async function scanNfc() {
     if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
     const reader = new NDEFReader();
     await reader.scan();
-    $("nfc").textContent = "Tap an item tag";
+    setNfcStatus("Tap an item tag");
     reader.onreading = async (event) => {
       let payload = "";
       for (const record of event.message.records) {
@@ -438,10 +450,10 @@ async function scanNfc() {
       await refresh();
       const me = state && state.players.find((p) => p.id === playerId);
       const left = me ? Number(me.pending_scans) || 0 : 0;
-      $("nfc").textContent = left > 0 ? `Tag accepted. Scan ${left} more.` : "Tag accepted. Item scans complete.";
+      setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` : "Tag accepted. Item scans complete.");
     };
   } catch (e) {
-    $("nfc").textContent = e.message;
+    setNfcStatus(e.message);
   }
 }
 
@@ -544,6 +556,7 @@ $("closeTarget").onclick = () => {
 $("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");
 $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
+$("scanRequired").onclick = scanNfc;
 
 document.addEventListener("pointerdown", enterImmersiveMode);
 document.addEventListener("click", enterImmersiveMode);

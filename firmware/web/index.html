@@ -110,6 +110,17 @@
     <p id="nfc" class="message"></p>
   </div>
 
+  <div id="scanPanel" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="scanTitle">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h2 id="scanTitle">Scan item tags</h2>
+      </div>
+      <p id="scanPrompt" class="message">Scan item tags to continue.</p>
+      <button id="scanRequired" class="scan-button" type="button">Scan tag</button>
+      <p id="scanStatus" class="message"></p>
+    </div>
+  </div>
+
   <div class="rotate-lock" role="status" aria-live="polite">
     <div class="rotate-card">
       <div class="rotate-icon" aria-hidden="true">▯</div>
