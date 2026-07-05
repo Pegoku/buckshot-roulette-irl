@@ -1146,7 +1146,7 @@ static esp_err_t api_arm(httpd_req_t *req)
         return ESP_OK;
     }
     game.armed_target = target;
-    set_message("%s armed shot at %s", shooter->name, t->name);
+    set_message("%s aimed at %s; pull trigger", shooter->name, t->name);
     unlock_game();
     send_json(req, "{\"ok\":true}");
     return ESP_OK;

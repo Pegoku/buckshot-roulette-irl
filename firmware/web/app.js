@@ -4,10 +4,12 @@ let isAdmin = localStorage.getItem("buckshotAdmin") === "1";
 let selectedTarget = -1;
 let state = null;
 let demoMode = false;
+let wakeLock = null;
+let lastLifeKey = "";
 
 const $ = (id) => document.getElementById(id);
 
-async function lockLandscape() {
+async function requestFullscreenMode() {
   try {
     if (document.fullscreenEnabled && !document.fullscreenElement) {
       try {
@@ -16,12 +18,38 @@ async function lockLandscape() {
         await document.documentElement.requestFullscreen();
       }
     }
+  } catch {
+    // Some mobile browsers, especially iOS Safari, do not expose page fullscreen.
+  }
+}
+
+async function lockLandscape() {
+  try {
     if (screen.orientation && screen.orientation.lock) {
       await screen.orientation.lock("landscape");
     }
   } catch {
     // Browser support varies; landscape CSS fallback still handles layout.
   }
+}
+
+async function keepAwake() {
+  try {
+    if (!wakeLock && "wakeLock" in navigator && document.visibilityState === "visible") {
+      wakeLock = await navigator.wakeLock.request("screen");
+      wakeLock.addEventListener("release", () => {
+        wakeLock = null;
+      });
+    }
+  } catch {
+    wakeLock = null;
+  }
+}
+
+async function enterImmersiveMode() {
+  await requestFullscreenMode();
+  await lockLandscape();
+  await keepAwake();
 }
 
 async function api(path, body) {
@@ -154,7 +182,11 @@ function render() {
     document.fonts.ready.then(syncTicker).catch(() => {});
   }
   turnTitle.classList.toggle("hot", isMyTurn);
-  $("life").innerHTML = lifeMeter(me ? me.lives : 0, maxLives);
+  const lifeKey = `${me ? me.lives : 0}/${maxLives}`;
+  if (lifeKey !== lastLifeKey) {
+    $("life").innerHTML = lifeMeter(me ? me.lives : 0, maxLives);
+    lastLifeKey = lifeKey;
+  }
   $("life").setAttribute("aria-label", `${me ? me.lives : 0} life remaining`);
   $("session").textContent = `${state.phase} / ${state.ap}`;
   $("hudActions").classList.toggle("hidden", playerId < 0);
@@ -335,13 +367,18 @@ $("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");
 $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
 
-document.addEventListener("pointerdown", lockLandscape, {once: true});
-document.addEventListener("click", lockLandscape, {once: true});
-document.addEventListener("touchend", lockLandscape, {once: true});
-document.addEventListener("keydown", lockLandscape, {once: true});
+document.addEventListener("pointerdown", enterImmersiveMode);
+document.addEventListener("click", enterImmersiveMode);
+document.addEventListener("touchend", enterImmersiveMode);
+document.addEventListener("keydown", enterImmersiveMode);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    keepAwake();
+  }
+});
 
 async function boot() {
-  await lockLandscape();
+  await enterImmersiveMode();
   try {
     await refresh();
   } catch (e) {
