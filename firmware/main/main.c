@@ -58,6 +58,8 @@
 #define PLAYER_TIMEOUT_RETRIES 3
 #define TFT_SHOT_ANIM_MS 900
 #define TFT_SHOT_BULLET_MS 500
+#define TFT_ROUND_REVEAL_MS 2600
+#define TFT_ROUND_REVEAL_DELAY_MS 4200
 
 #define COLOR_BLACK 0x0000
 #define COLOR_WHITE 0xffff
@@ -171,6 +173,8 @@ extern const unsigned char server_crt_start[] asm("_binary_server_crt_start");
 extern const unsigned char server_crt_end[] asm("_binary_server_crt_end");
 extern const unsigned char server_key_start[] asm("_binary_server_key_start");
 extern const unsigned char server_key_end[] asm("_binary_server_key_end");
+
+static void save_tokens_locked(void);
 
 static const uint8_t digit_font[10][5] = {
     {0x7, 0x5, 0x5, 0x5, 0x7},
@@ -916,6 +920,24 @@ static void release_player_tokens_locked(uint8_t pid)
         if (game.tokens[i].owner == pid && !game.tokens[i].consumed) {
             game.tokens[i].owner = -1;
         }
+    }
+}
+
+static void clear_item_token_ownership_locked(void)
+{
+    bool changed = false;
+    for (int i = 0; i < MAX_TOKENS; i++) {
+        if (!game.tokens[i].used) {
+            continue;
+        }
+        if (game.tokens[i].owner != -1 || game.tokens[i].consumed) {
+            game.tokens[i].owner = -1;
+            game.tokens[i].consumed = false;
+            changed = true;
+        }
+    }
+    if (changed) {
+        save_tokens_locked();
     }
 }
 
