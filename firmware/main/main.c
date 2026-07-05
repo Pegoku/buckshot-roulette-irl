@@ -547,7 +547,7 @@ static void tft_shot_fx_sprite(lv_obj_t *parent, bool live, uint8_t variant, uin
     lv_obj_t *img = lv_img_create(parent);
     lv_img_set_src(img, frames[frame]);
     lv_obj_set_pos(img, x, y);
-    lv_img_set_zoom(img, live ? 384 : 340);
+    lv_img_set_zoom(img, live ? 520 : 340);
     lv_img_set_pivot(img, 32, 32);
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
 }
@@ -729,7 +729,7 @@ static void lcd_draw_game_screen(void)
             int squash = elapsed > 620 ? 288 : 256;
             int x = 176 - travel + shake;
             int y = 82 + drop - (shake / 2);
-            int16_t angle = -180 + (int16_t)((elapsed * 360) / TFT_SHOT_BULLET_MS);
+            int16_t angle = 900;
             tft_shell_sprite(root, snap.last_shot_live, x, y, squash, angle, LV_OPA_COVER);
         } else {
             uint32_t smoke_elapsed = elapsed - TFT_SHOT_BULLET_MS;
