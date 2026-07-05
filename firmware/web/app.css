@@ -354,6 +354,19 @@ h2 {
   background: #060906;
 }
 
+.self-avatar {
+  position: absolute;
+  right: 16px;
+  top: 72px;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  background: #060906;
+  padding: 4px;
+}
+
 .life-cell {
   display: grid;
   place-items: center;
@@ -618,6 +631,14 @@ h2 {
 
   .life-pack {
     min-height: 54px;
+    max-width: calc(100% - 82px);
+  }
+
+  .self-avatar {
+    right: 12px;
+    top: 60px;
+    width: 64px;
+    height: 64px;
   }
 
   .life-cell {

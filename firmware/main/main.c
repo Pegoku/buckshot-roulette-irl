@@ -696,50 +696,28 @@ static void lcd_draw_game_screen(void)
         if (!snap.players[i].active) {
             continue;
         }
-        int y = 56 + visible * 29;
+        int y = 48 + visible * 46;
         bool current = i == snap.current && snap.phase == PHASE_ACTIVE;
         lv_color_t color = tft_player_color(snap.players[i].color);
         lv_color_t border = current ? lv_color_hex(0xffd447) : (snap.players[i].alive ? color : lv_color_hex(0x31523d));
-        lv_obj_t *row = tft_panel(root, 18, y, 230, 22, border, current ? LV_OPA_30 : LV_OPA_20);
+        lv_obj_t *row = tft_panel(root, 18, y, 230, 48, border, current ? LV_OPA_30 : LV_OPA_20);
         char line[64];
         snprintf(line, sizeof(line), "P%u %-15s", i + 1, snap.players[i].name);
-        tft_label(row, line, 6, 6, snap.players[i].alive ? color : lv_color_hex(0x6a7f70), 1);
+        tft_label(row, line, 8, 8, snap.players[i].alive ? color : lv_color_hex(0x6a7f70), 1);
         for (int life = 0; life < snap.max_lives && life < 9; life++) {
             lv_obj_t *pip = lv_obj_create(row);
             lv_obj_remove_style_all(pip);
-            lv_obj_set_pos(pip, 154 + life * 8, 6);
-            lv_obj_set_size(pip, 5, 10);
+            lv_obj_set_pos(pip, 10 + life * 12, 30);
+            lv_obj_set_size(pip, 8, 10);
             lv_obj_set_style_bg_color(pip, life < snap.players[i].lives ? color : lv_color_hex(0x203326), 0);
             lv_obj_set_style_bg_opa(pip, LV_OPA_COVER, 0);
         }
-        tft_soup_sprite(root, &snap.players[i], 264, 50 + visible * 46, current);
+        tft_soup_sprite(root, &snap.players[i], 264, y + 2, current);
         visible++;
     }
 
     uint32_t shot_elapsed = snap.last_shot_valid ? (uint32_t)(now - snap.last_shot_ms) : UINT32_MAX;
     bool shot_anim_active = snap.last_shot_valid && shot_elapsed < TFT_SHOT_ANIM_MS;
-    lv_obj_t *rail = tft_panel(root, 18, 184, 230, 34, lv_color_hex(0x00ff66), LV_OPA_20);
-    int rail_slot = 0;
-    if (shot_anim_active) {
-        tft_shell_sprite(rail, snap.last_shot_live, 198, 1, 128, 0, LV_OPA_COVER);
-        rail_slot = 1;
-    }
-    uint8_t rail_live = snap_live_remaining(&snap);
-    uint8_t rail_blank = snap.shell_count - snap.shell_index - rail_live;
-    for (int i = 0; i < rail_blank; i++) {
-        if (rail_slot >= MAX_SHELLS) {
-            break;
-        }
-        tft_shell_sprite(rail, false, 198 - rail_slot * 25, 1, 128, 0, LV_OPA_COVER);
-        rail_slot++;
-    }
-    for (int i = 0; i < rail_live; i++) {
-        if (rail_slot >= MAX_SHELLS) {
-            break;
-        }
-        tft_shell_sprite(rail, true, 198 - rail_slot * 25, 1, 128, 0, LV_OPA_COVER);
-        rail_slot++;
-    }
 
     if (snap.phase == PHASE_ACTIVE && now - snap.phase_started_ms < 4200) {
         uint32_t elapsed = now - snap.phase_started_ms;

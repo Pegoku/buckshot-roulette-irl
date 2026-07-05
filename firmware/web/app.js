@@ -442,6 +442,10 @@ function render() {
     lastLifeKey = lifeKey;
   }
   $("life").setAttribute("aria-label", `${me ? me.lives : 0} life remaining`);
+  $("selfAvatar").classList.toggle("hidden", !me);
+  if (me) {
+    $("selfAvatar").src = playerPortraitSrc(me);
+  }
   $("session").textContent = `${state.phase} / ${state.ap}`;
   $("hudActions").classList.toggle("hidden", playerId < 0);
   $("shot").classList.toggle("hidden", playerId < 0 || state.phase === "lobby" || state.winner >= 0);
