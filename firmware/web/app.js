@@ -96,7 +96,9 @@ function lifeMeter(lives, maxLives = 3) {
   const alive = Math.max(0, Math.min(total, Number(lives) || 0));
   return Array.from({length: total}, (_, i) => {
     const filled = i < alive ? " filled" : "";
-    return `<span class="life-cell${filled}" aria-hidden="true">ϟ</span>`;
+    const src = i < alive ? "/images/koi/koi_alive.png" : "/images/koi/deadkoi.png";
+    const alt = i < alive ? "life remaining" : "life lost";
+    return `<span class="life-cell${filled}"><img src="${src}" alt="${alt}"></span>`;
   }).join("");
 }
 
@@ -113,17 +115,44 @@ function render() {
   localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
 
   const me = state.players.find((p) => p.id === playerId);
+  const currentPlayer = state.players.find((p) => p.id === state.current);
   const isMyTurn = Boolean(me && me.id === state.current && state.phase !== "lobby" && state.winner < 0);
   const maxLives = Math.max(3, ...state.players.map((p) => Number(p.lives) || 0));
 
-  $("turnTitle").textContent = state.winner >= 0
-    ? (state.winner === playerId ? "YOU LIVED" : "ROUND LOST")
-    : state.phase === "lobby"
-      ? "WAITING"
-      : isMyTurn
-        ? "YOUR TURN"
-        : "STAND BY";
-  $("turnTitle").classList.toggle("hot", isMyTurn);
+  const turnTitle = $("turnTitle");
+  let title = "WAITING";
+  let ticker = false;
+  if (state.winner >= 0) {
+    title = state.winner === playerId ? "YOU LIVED" : "ROUND LOST";
+  } else if (state.phase !== "lobby") {
+    if (isMyTurn) {
+      title = "YOUR TURN";
+    } else {
+      title = `${currentPlayer ? currentPlayer.name : "SOMEONE"} is gambling with your lives`;
+      ticker = true;
+    }
+  }
+  turnTitle.classList.toggle("ticker", ticker);
+  if (turnTitle.dataset.title !== title || turnTitle.dataset.ticker !== String(ticker)) {
+    const safeTitle = escapeHtml(title);
+    turnTitle.innerHTML = ticker
+      ? `<span class="ticker-track"><span>${safeTitle}</span><span aria-hidden="true">${safeTitle}</span></span>`
+      : safeTitle;
+    turnTitle.dataset.title = title;
+    turnTitle.dataset.ticker = String(ticker);
+  }
+  const syncTicker = () => {
+    const trackItem = turnTitle.querySelector(".ticker-track span");
+    const distance = trackItem ? Math.ceil(trackItem.scrollWidth + 48) : turnTitle.clientWidth;
+    const duration = Math.max(4, distance / 34);
+    turnTitle.style.setProperty("--ticker-distance", `-${distance}px`);
+    turnTitle.style.setProperty("--ticker-duration", `${duration}s`);
+  };
+  requestAnimationFrame(syncTicker);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(syncTicker).catch(() => {});
+  }
+  turnTitle.classList.toggle("hot", isMyTurn);
   $("life").innerHTML = lifeMeter(me ? me.lives : 0, maxLives);
   $("life").setAttribute("aria-label", `${me ? me.lives : 0} life remaining`);
   $("session").textContent = `${state.phase} / ${state.ap}`;
@@ -224,6 +253,7 @@ async function start() {
   try {
     await api("/api/start", {pid: playerId});
     $("adminStatus").textContent = "Round started";
+    $("adminPanel").classList.add("hidden");
     await refresh();
   } catch (e) {
     $("adminStatus").textContent = e.message;

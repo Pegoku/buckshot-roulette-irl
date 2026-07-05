@@ -1442,6 +1442,9 @@ static const char *content_type_for(const char *path)
     if (strcmp(ext, ".webmanifest") == 0) {
         return "application/manifest+json";
     }
+    if (strcmp(ext, ".png") == 0) {
+        return "image/png";
+    }
     return "application/octet-stream";
 }
 
@@ -1566,6 +1569,7 @@ static void register_routes(httpd_handle_t server)
     register_get(server, "/app.js", static_handler);
     register_get(server, "/manifest.webmanifest", static_handler);
     register_get(server, "/fonts/*", static_handler);
+    register_get(server, "/images/*", static_handler);
     register_get(server, "/api/state", api_state);
     register_post(server, "/api/register", api_register);
     register_post(server, "/api/setup", api_setup);
