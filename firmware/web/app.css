@@ -363,13 +363,13 @@ h2 {
 .life-cell.filled .koi-shine {
   opacity: .82;
   filter: saturate(2.8) brightness(1.24) contrast(1.14);
-  -webkit-mask-image: linear-gradient(45deg, transparent 41%, #000 48%, #000 54%, transparent 61%);
-  mask-image: linear-gradient(45deg, transparent 41%, #000 48%, #000 54%, transparent 61%);
-  -webkit-mask-size: 240% 240%;
-  mask-size: 240% 240%;
-  -webkit-mask-position: 100% 100%;
-  mask-position: 100% 100%;
-  animation: koiSaturateSweep 1.1s linear infinite;
+  -webkit-mask-image: linear-gradient(45deg, transparent 45%, #000 49%, #000 53%, transparent 57%);
+  mask-image: linear-gradient(45deg, transparent 45%, #000 49%, #000 53%, transparent 57%);
+  -webkit-mask-size: 520% 520%;
+  mask-size: 520% 520%;
+  -webkit-mask-position: 240% 240%;
+  mask-position: 240% 240%;
+  animation: koiSaturateSweep 6s linear infinite;
 }
 
 .life-cell:not(.filled) .koi-base {
@@ -661,13 +661,13 @@ h2 {
 
 @keyframes koiSaturateSweep {
   0% {
-    -webkit-mask-position: 100% 100%;
-    mask-position: 100% 100%;
+    -webkit-mask-position: 240% 240%;
+    mask-position: 240% 240%;
   }
 
   100% {
-    -webkit-mask-position: 0 0;
-    mask-position: 0 0;
+    -webkit-mask-position: -140% -140%;
+    mask-position: -140% -140%;
   }
 }
 
