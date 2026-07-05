@@ -336,6 +336,19 @@ h2 {
   color: var(--line-dim);
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.life-cell::before {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow:
+    inset 0 0 22px rgba(0, 255, 102, .2),
+    0 0 18px rgba(0, 255, 102, .38);
+  transform: scale(.96);
 }
 
 .life-cell img {
@@ -347,16 +360,18 @@ h2 {
     drop-shadow(-1px 0 rgba(255, 0, 64, .24))
     drop-shadow(1px 0 rgba(0, 130, 255, .2))
     drop-shadow(0 0 8px rgba(0, 255, 102, .4));
+  position: relative;
+  z-index: 1;
 }
 
 .life-cell.filled {
   border-color: var(--line);
   color: var(--line);
-  animation: lifeBreath 2.25s ease-in-out infinite;
+  box-shadow: inset 0 0 12px rgba(0, 255, 102, .1);
 }
 
-.life-cell.filled img {
-  animation: lifeImageBreath 2.25s ease-in-out infinite;
+.life-cell.filled::before {
+  animation: lifeBreath 2s ease-in-out infinite;
 }
 
 .life-cell:not(.filled) img {
@@ -651,36 +666,14 @@ h2 {
 @keyframes lifeBreath {
   0%,
   100% {
-    box-shadow:
-      inset 0 0 13px rgba(0, 255, 102, .08),
-      0 0 6px rgba(0, 255, 102, .14);
+    opacity: .18;
+    transform: scale(.96);
   }
 
   50% {
-    box-shadow:
-      inset 0 0 24px rgba(0, 255, 102, .22),
-      0 0 18px rgba(0, 255, 102, .36);
+    opacity: 1;
+    transform: scale(1.03);
   }
-}
-
-@keyframes lifeImageBreath {
-  0%,
-  100% {
-    filter:
-      drop-shadow(-1px 0 rgba(255, 0, 64, .24))
-      drop-shadow(1px 0 rgba(0, 130, 255, .2))
-      drop-shadow(0 0 7px rgba(0, 255, 102, .36));
-  }
-
-  50% {
-    filter:
-      drop-shadow(-1px 0 rgba(255, 0, 64, .24))
-      drop-shadow(1px 0 rgba(0, 130, 255, .2))
-      drop-shadow(0 0 16px rgba(0, 255, 102, .78));
-  }
-
-  
-
 }
 
 @keyframes textShadow {
