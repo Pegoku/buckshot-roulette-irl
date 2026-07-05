@@ -167,6 +167,7 @@ static char ap_ssid[32];
 static char join_token[17];
 static char join_path[32];
 static char join_url[64];
+static char secure_join_url[64];
 static const char *DEV_JOIN_PATH = "/join/allow";
 
 extern const unsigned char server_crt_start[] asm("_binary_server_crt_start");
@@ -605,6 +606,63 @@ static void tft_shot_fx_sprite(lv_obj_t *parent, bool live, uint8_t variant, uin
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
 }
 
+static void tft_round_shell_intro(lv_obj_t *parent, const game_t *snap, uint32_t elapsed_ms)
+{
+    lv_obj_t *shade = lv_obj_create(parent);
+    lv_obj_remove_style_all(shade);
+    lv_obj_set_pos(shade, 0, 0);
+    lv_obj_set_size(shade, LCD_WIDTH, LCD_HEIGHT);
+    lv_obj_set_style_bg_color(shade, lv_color_hex(0x020604), 0);
+    lv_obj_set_style_bg_opa(shade, LV_OPA_70, 0);
+
+    lv_obj_t *panel = tft_panel(parent, 22, 70, 276, 100, lv_color_hex(0xffd447), LV_OPA_80);
+    char round[24];
+    snprintf(round, sizeof(round), "ROUND %u", snap->round);
+    tft_label(panel, round, 12, 10, lv_color_hex(0xffd447), 1);
+
+    uint8_t live = snap_live_remaining(snap);
+    uint8_t blank = snap->shell_count - snap->shell_index - live;
+    uint8_t total = live + blank;
+    if (total == 0) {
+        return;
+    }
+
+    uint32_t reveal_ms = 1050;
+    uint32_t group_ms = 420;
+    uint8_t shown = total;
+    if (elapsed_ms < reveal_ms) {
+        shown = (elapsed_ms * total) / reveal_ms + 1;
+        if (shown > total) {
+            shown = total;
+        }
+    }
+
+    int spacing = 30;
+    int slide = 0;
+    if (elapsed_ms > reveal_ms) {
+        uint32_t group_elapsed = elapsed_ms - reveal_ms;
+        if (group_elapsed < group_ms) {
+            spacing = 30 - (int)((group_elapsed * 12) / group_ms);
+        } else {
+            spacing = 18;
+            uint32_t slide_elapsed = group_elapsed - group_ms;
+            uint32_t slide_ms = TFT_ROUND_REVEAL_MS - reveal_ms - group_ms;
+            if (slide_elapsed > slide_ms) {
+                slide_elapsed = slide_ms;
+            }
+            slide = (int)((slide_elapsed * 360) / slide_ms);
+        }
+    }
+
+    int width = (shown - 1) * spacing + 25;
+    int x0 = 138 - width / 2 + slide;
+    int y = 34;
+    for (uint8_t i = 0; i < shown; i++) {
+        bool shell_live = i >= blank;
+        tft_shell_sprite(panel, shell_live, x0 + i * spacing, y, 205, 0, LV_OPA_COVER);
+    }
+}
+
 static void lcd_draw_token_qr_hint(void)
 {
     for (int i = 0; i < 16; i++) {
@@ -723,7 +781,9 @@ static void lcd_draw_game_screen(void)
     uint32_t shot_elapsed = snap.last_shot_valid ? (uint32_t)(now - snap.last_shot_ms) : UINT32_MAX;
     bool shot_anim_active = snap.last_shot_valid && shot_elapsed < TFT_SHOT_ANIM_MS;
 
-    if (snap.phase == PHASE_ACTIVE && now - snap.phase_started_ms < 4200) {
+    if (snap.phase == PHASE_ACTIVE && now - snap.round_started_ms < TFT_ROUND_REVEAL_MS) {
+        tft_round_shell_intro(root, &snap, now - snap.round_started_ms);
+    } else if (snap.phase == PHASE_ACTIVE && now - snap.phase_started_ms < 4200) {
         uint32_t elapsed = now - snap.phase_started_ms;
         const char *msg = "GET READY";
         if (elapsed > 1000 && elapsed <= 2000) {
@@ -735,17 +795,6 @@ static void lcd_draw_game_screen(void)
         }
         lv_obj_t *overlay = tft_panel(root, 28, 72, 264, 96, lv_color_hex(0xffd447), LV_OPA_80);
         tft_label(overlay, msg, msg[1] ? 52 : 120, 34, lv_color_hex(0xffd447), msg[1] ? 2 : 4);
-    } else if (snap.phase == PHASE_ACTIVE && now - snap.round_started_ms < 1100) {
-        int shake = ((now / 70) % 3) - 1;
-        char round[24];
-        snprintf(round, sizeof(round), "ROUND %u", snap.round);
-        lv_obj_t *shade = lv_obj_create(root);
-        lv_obj_remove_style_all(shade);
-        lv_obj_set_pos(shade, 0, 0);
-        lv_obj_set_size(shade, LCD_WIDTH, LCD_HEIGHT);
-        lv_obj_set_style_bg_color(shade, lv_color_hex(0x020604), 0);
-        lv_obj_set_style_bg_opa(shade, LV_OPA_50, 0);
-        tft_label(root, round, 96 + shake * 3, 102 + shake, lv_color_hex(0x00ff66), 2);
     }
 
     if (snap.reveal_shell_valid && (int32_t)(snap.reveal_shell_until_ms - now) > 0) {
@@ -775,7 +824,9 @@ static void lcd_draw_game_screen(void)
             tft_shell_sprite(root, snap.last_shot_live, x, y, squash, angle, LV_OPA_COVER);
         } else {
             uint32_t smoke_elapsed = elapsed - TFT_SHOT_BULLET_MS;
-            tft_shot_fx_sprite(root, snap.last_shot_live, snap.last_shot_fx_variant, smoke_elapsed, 40 + shake, 32 - (shake / 2));
+            int fx_x = snap.last_shot_live ? 58 : 74;
+            int fx_y = snap.last_shot_live ? 60 : 72;
+            tft_shot_fx_sprite(root, snap.last_shot_live, snap.last_shot_fx_variant, smoke_elapsed, fx_x + shake, fx_y - (shake / 2));
             const char *label = snap.last_shot_live ? "BANG" : "PUFF";
             tft_label(root, label, 116 + shake, 132, snap.last_shot_live ? lv_color_hex(0xff4a3d) : lv_color_hex(0xd8e6d6), 2);
         }
@@ -1132,6 +1183,7 @@ static void shuffle_shells(void)
 
 static void request_item_scans(void)
 {
+    clear_item_token_ownership_locked();
     for (int p = 0; p < MAX_PLAYERS; p++) {
         if (!game.players[p].active || !game.players[p].alive) {
             game.players[p].pending_item_scans = 0;
@@ -1962,13 +2014,17 @@ static esp_err_t send_file(httpd_req_t *req, const char *path)
 
 static esp_err_t root_handler(httpd_req_t *req)
 {
-    char html[512];
+    char html[768];
     snprintf(html, sizeof(html),
         "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
         "<title>Buckshot IRL</title><body style='font-family:system-ui;background:#111;color:#eee;padding:24px'>"
-        "<h1>Buckshot IRL</h1><p>Use HTTPS for Web NFC.</p>"
-        "<p><a style='color:#8bd3ff' href='%s'>Open secure join page</a></p></body>",
-        join_url);
+        "<h1>Buckshot IRL</h1>"
+        "<p>Use the normal HTTP game page unless you are scanning or writing NFC tags.</p>"
+        "<p><a style='color:#8bd3ff;font-size:20px' href='%s'>Open game</a></p>"
+        "<p><a style='color:#8bd3ff' href='%s'>Open secure NFC page</a></p>"
+        "<p><a style='color:#8bd3ff' href='/cert'>Download HTTPS certificate</a></p>"
+        "</body>",
+        join_url, secure_join_url);
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
@@ -1998,42 +2054,6 @@ static esp_err_t cert_handler(httpd_req_t *req)
     httpd_resp_set_type(req, "application/x-x509-ca-cert");
     httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=\"buckshot-irl.crt\"");
     httpd_resp_send(req, (const char *)server_crt_start, cert_len);
-    return ESP_OK;
-}
-
-static esp_err_t http_setup_handler(httpd_req_t *req)
-{
-    char html[1024];
-    snprintf(html, sizeof(html),
-        "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
-        "<title>Buckshot IRL setup</title>"
-        "<body style='font-family:system-ui;background:#111;color:#eee;padding:24px;line-height:1.45'>"
-        "<h1>Buckshot IRL</h1>"
-        "<p>Web NFC needs HTTPS. This device uses a local self-signed certificate for 192.168.4.1.</p>"
-        "<p><a style='color:#8bd3ff;font-size:20px' href='/cert'>Download certificate</a></p>"
-        "<p>Install and trust the certificate for VPN and apps, then open the secure game URL.</p>"
-        "<p><a style='color:#8bd3ff;font-size:20px' href='%s'>Open secure game</a></p>"
-        "<p>If Chrome keeps warning, reconnect to Wi-Fi after trusting the certificate.</p>"
-        "</body>",
-        join_url);
-    httpd_resp_set_type(req, "text/html");
-    httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-}
-
-static esp_err_t http_redirect_handler(httpd_req_t *req)
-{
-    char location[96];
-    if (strcmp(req->uri, "/") == 0) {
-        snprintf(location, sizeof(location), "https://%s/", AP_IP);
-    } else {
-        char uri[64];
-        strlcpy(uri, req->uri, sizeof(uri));
-        snprintf(location, sizeof(location), "https://%s%s", AP_IP, uri);
-    }
-    httpd_resp_set_status(req, "302 Found");
-    httpd_resp_set_hdr(req, "Location", location);
-    httpd_resp_send(req, "HTTPS required", HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
 }
 
@@ -2093,6 +2113,11 @@ static void start_https_server(void)
     httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
     config.httpd.uri_match_fn = httpd_uri_match_wildcard;
     config.httpd.max_uri_handlers = 20;
+    config.httpd.max_open_sockets = 4;
+    config.httpd.backlog_conn = 2;
+    config.httpd.lru_purge_enable = true;
+    config.httpd.recv_wait_timeout = 5;
+    config.httpd.send_wait_timeout = 5;
     config.servercert = server_crt_start;
     config.servercert_len = server_crt_end - server_crt_start;
     config.prvtkey_pem = server_key_start;
@@ -2103,16 +2128,15 @@ static void start_https_server(void)
     register_routes(server);
 }
 
-static void start_http_redirect_server(void)
+static void start_http_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
     config.uri_match_fn = httpd_uri_match_wildcard;
-    config.max_uri_handlers = 4;
+    config.max_uri_handlers = 20;
+    config.lru_purge_enable = true;
     httpd_handle_t server = NULL;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
-    register_get(server, "/", http_setup_handler);
-    register_get(server, "/cert", cert_handler);
-    register_get(server, "/*", http_redirect_handler);
+    register_routes(server);
 }
 
 static void start_spiffs(void)
@@ -2235,7 +2259,7 @@ static void display_task(void *arg)
         }
         if (game.phase == PHASE_ACTIVE) {
             animate = (uint32_t)(now - game.phase_started_ms) < 4200 ||
-                      (uint32_t)(now - game.round_started_ms) < 1100 ||
+                      (uint32_t)(now - game.round_started_ms) < TFT_ROUND_REVEAL_MS ||
                       animate ||
                       (game.reveal_shell_valid && (int32_t)(game.reveal_shell_until_ms - now) > 0);
         }
@@ -2263,10 +2287,12 @@ void app_main(void)
     load_tokens_locked();
     unlock_game();
     make_ids();
-    snprintf(join_url, sizeof(join_url), "https://%s%s", AP_IP, join_path);
+    snprintf(join_url, sizeof(join_url), "http://%s%s", AP_IP, join_path);
+    snprintf(secure_join_url, sizeof(secure_join_url), "https://%s%s", AP_IP, join_path);
 
     ESP_LOGI(TAG, "AP SSID: %s", ap_ssid);
     ESP_LOGI(TAG, "Join URL: %s", join_url);
+    ESP_LOGI(TAG, "Secure NFC URL: %s", secure_join_url);
 
     start_spiffs();
     lcd_init();
@@ -2275,7 +2301,7 @@ void app_main(void)
 
     start_wifi_ap();
     start_https_server();
-    start_http_redirect_server();
+    start_http_server();
 
     xTaskCreatePinnedToCore(button_task, "button", 2048, NULL, 10, NULL, 0);
     xTaskCreatePinnedToCore(game_task, "game", 4096, NULL, 8, NULL, 0);

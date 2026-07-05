@@ -7,7 +7,7 @@ It includes:
 - ILI9341 SPI display output
 - physical trigger button
 - open ESP32-S3 Wi-Fi access point
-- HTTPS QR/token-gated web session URL
+- HTTP QR/token-gated web session URL, with HTTPS kept for Web NFC
 - real QR rendering on the TFT display
 - event-driven display redraws to avoid constant full-screen flashing
 - SPIFFS-hosted web app assets
@@ -98,10 +98,11 @@ On boot, the firmware prints:
 
 ```text
 AP SSID: Buckshot-A1B2C3
-Join URL: https://192.168.4.1/join/01234567abcdef00
+Join URL: http://192.168.4.1/join/01234567abcdef00
+Secure NFC URL: https://192.168.4.1/join/01234567abcdef00
 ```
 
-The AP is open. The playable page is only served through the per-boot `/join/<token>` URL. HTTP on port 80 serves a small setup page and certificate download, then redirects other paths to HTTPS.
+The AP is open. The playable page is served through the per-boot `/join/<token>` URL on HTTP by default. HTTPS serves the same join path for Web NFC scanning/writing, because browser NFC APIs require a secure context.
 
 ## HTTPS Certificate
 
@@ -128,19 +129,19 @@ openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
   -addext "subjectAltName=IP:192.168.4.1,DNS:buckshot.local"
 ```
 
-Certificate setup flow:
+Certificate setup flow for NFC:
 
 1. Connect the phone to the Buckshot AP.
 2. Open `http://192.168.4.1/`.
 3. Download `buckshot-irl.crt` from the setup page, or open `http://192.168.4.1/cert` directly.
 4. Install it as a CA certificate and trust it for VPN and apps.
-5. Open the HTTPS join URL shown on the display or serial monitor.
+5. Use the normal HTTP join URL for gameplay. When scanning/writing NFC, the app opens the HTTPS copy of the same join URL.
 
 Android Chrome will show a certificate warning until the certificate is trusted by the phone. If Chrome still treats the page as not secure after trusting it, reconnect to the AP and reopen the join URL.
 
 ## Display Output
 
-In lobby, the display shows a real QR code for the per-boot HTTPS join URL.
+In lobby, the display shows a real QR code for the per-boot HTTP join URL.
 The lower-left number is the count of registered players. The lower-right yellow number is the current admin player number when an admin exists.
 
 During the game, the display shows a compact numeric status view:

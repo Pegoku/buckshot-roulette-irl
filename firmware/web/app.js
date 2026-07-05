@@ -31,6 +31,14 @@ function isAllowedJoinPath(path, expected) {
   return path === expected || path === "/join/allow";
 }
 
+function secureNfcUrl() {
+  return `https://${location.hostname}${location.pathname}${location.search}`;
+}
+
+function needsSecureNfcContext() {
+  return !window.isSecureContext || location.protocol !== "https:";
+}
+
 function expireTab() {
   clearSession();
   location.replace("/expired");
@@ -285,6 +293,10 @@ async function submitScanPayload(payload, target = selectedTarget) {
 async function startPlayerNfc() {
   if (demoMode || playerId < 0 || playerNfcReader || playerNfcStarting) return;
   try {
+    if (needsSecureNfcContext()) {
+      setNfcStatus("Open secure NFC page");
+      return;
+    }
     requireWebNfc();
     playerNfcStarting = true;
     const reader = new NDEFReader();
@@ -644,10 +656,18 @@ async function useItem(item) {
 }
 
 async function scanNfc() {
+  if (needsSecureNfcContext()) {
+    location.href = secureNfcUrl();
+    return;
+  }
   await startPlayerNfc();
 }
 
 function openNfcPanel() {
+  if (needsSecureNfcContext()) {
+    location.href = secureNfcUrl();
+    return;
+  }
   $("adminPanel").classList.add("modal-blocked");
   $("nfcPanel").classList.remove("hidden");
   $("nfcAdminStatus").textContent = state && state.write_mode ? "Write mode is on" : "";
