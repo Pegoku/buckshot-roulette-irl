@@ -359,6 +359,12 @@ $("shot").onclick = () => $("targetDialog").classList.remove("hidden");
 $("adminToggle").onclick = () => $("adminPanel").classList.toggle("hidden");
 $("closeAdmin").onclick = () => $("adminPanel").classList.add("hidden");
 $("join").onclick = join;
+$("name").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    join();
+  }
+});
 $("saveSetup").onclick = setup;
 $("start").onclick = start;
 $("reset").onclick = reset;
