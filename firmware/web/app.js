@@ -98,7 +98,8 @@ function lifeMeter(lives, maxLives = 3) {
     const filled = i < alive ? " filled" : "";
     const src = i < alive ? "/images/koi/koi_alive.png" : "/images/koi/deadkoi.png";
     const alt = i < alive ? "life remaining" : "life lost";
-    return `<span class="life-cell${filled}"><img src="${src}" alt="${alt}"></span>`;
+    const shine = i < alive ? `<img class="koi-shine" src="${src}" alt="" aria-hidden="true">` : "";
+    return `<span class="life-cell${filled}"><img class="koi-base" src="${src}" alt="${alt}">${shine}</span>`;
   }).join("");
 }
 
