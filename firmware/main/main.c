@@ -1068,8 +1068,8 @@ static void request_item_scans(void)
             game.players[p].nfc_use_block_until_ms = 0;
             continue;
         }
-        uint8_t room = MAX_PLAYER_ITEMS - inventory_count(&game.players[p]);
-        game.players[p].pending_item_scans = game.items_per_player < room ? game.items_per_player : room;
+        memset(game.players[p].inv, 0, sizeof(game.players[p].inv));
+        game.players[p].pending_item_scans = game.items_per_player < MAX_PLAYER_ITEMS ? game.items_per_player : MAX_PLAYER_ITEMS;
         game.players[p].nfc_use_block_until_ms = 0;
     }
 }
@@ -1344,9 +1344,9 @@ static esp_err_t api_state(httpd_req_t *req)
             continue;
         }
         player_t *p = &game.players[i];
-        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"lives\":%u,\"alive\":%s,\"admin\":%s,\"pending_scans\":%u,\"inv\":[",
+        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"lives\":%u,\"alive\":%s,\"jammed\":%s,\"admin\":%s,\"pending_scans\":%u,\"inv\":[",
                       first_player ? "" : ",", p->id, p->name, p->lives, p->alive ? "true" : "false",
-                      p->id == game.admin_id ? "true" : "false", p->pending_item_scans);
+                      p->skip_turn ? "true" : "false", p->id == game.admin_id ? "true" : "false", p->pending_item_scans);
         first_player = false;
         for (int item = 0; item < MAX_ITEMS; item++) {
             w += snprintf(w, end - w, "%s%u", item == 0 ? "" : ",", p->inv[item]);

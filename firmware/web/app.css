@@ -74,6 +74,15 @@ body.dead-player {
   --crt-blue: rgba(80, 0, 12, .18);
 }
 
+body.jammed-player {
+  --line: #ff9b35;
+  --line-dim: #8f4e20;
+  --text: #ff9b35;
+  --muted: #c36b2e;
+  --crt-red: rgba(255, 84, 42, .26);
+  --crt-blue: rgba(78, 32, 0, .16);
+}
+
 body::before,
 body::after {
   content: "";

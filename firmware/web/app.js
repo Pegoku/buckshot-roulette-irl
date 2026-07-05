@@ -276,7 +276,7 @@ async function startPlayerNfc() {
     reader.onreading = async (event) => {
       const payload = payloadFromNfcEvent(event) || `serial:${event.serialNumber}`;
       const now = Date.now();
-      if (payload === lastNfcPayload && now - lastNfcAt < 1400) return;
+      if (!adrenalineSteal && payload === lastNfcPayload && now - lastNfcAt < 1400) return;
       lastNfcPayload = payload;
       lastNfcAt = now;
       try {
@@ -303,8 +303,8 @@ function makeDemoState() {
     pending_scan_total: 4,
     message: "terminal link unstable",
     players: [
-      {id: 0, name: "Operator", lives: 3, alive: true, admin: false, pending_scans: 2, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
-      {id: 1, name: "Dealer", lives: 3, alive: true, admin: false, pending_scans: 2, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
+      {id: 0, name: "Operator", lives: 3, alive: true, jammed: false, admin: false, pending_scans: 2, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
+      {id: 1, name: "Dealer", lives: 3, alive: true, jammed: false, admin: false, pending_scans: 2, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
     ]
   };
 }
@@ -356,7 +356,8 @@ function render() {
 
   const me = state.players.find((p) => p.id === playerId);
   const currentPlayer = state.players.find((p) => p.id === state.current);
-  const isMyTurn = Boolean(me && me.id === state.current && state.phase !== "lobby" && state.winner < 0);
+  const jammed = Boolean(me && me.alive && me.jammed);
+  const isMyTurn = Boolean(me && me.id === state.current && state.phase !== "lobby" && state.winner < 0 && !jammed);
   const maxLives = Math.max(3, ...state.players.map((p) => Number(p.lives) || 0));
   const pendingScanTotal = Number(state.pending_scan_total) || 0;
   if (lastPendingScanTotal > 0 && pendingScanTotal === 0) {
@@ -364,6 +365,7 @@ function render() {
   }
   lastPendingScanTotal = pendingScanTotal;
   document.body.classList.toggle("dead-player", Boolean(me && !me.alive));
+  document.body.classList.toggle("jammed-player", jammed);
 
   const turnTitle = $("turnTitle");
   let title = "WAITING";
@@ -371,7 +373,9 @@ function render() {
   if (state.winner >= 0) {
     title = state.winner === playerId ? "YOU LIVED" : "ROUND LOST";
   } else if (state.phase !== "lobby") {
-    if (isMyTurn) {
+    if (jammed) {
+      title = "SIGNAL JAMMED";
+    } else if (isMyTurn) {
       title = "YOUR TURN";
     } else {
       title = `${currentPlayer ? currentPlayer.name : "SOMEONE"} has your lives at stake`;
@@ -408,7 +412,7 @@ function render() {
   $("session").textContent = `${state.phase} / ${state.ap}`;
   $("hudActions").classList.toggle("hidden", playerId < 0);
   $("shot").classList.toggle("hidden", playerId < 0 || state.phase === "lobby" || state.winner >= 0);
-  $("shot").disabled = !isMyTurn;
+  $("shot").disabled = !isMyTurn || jammed;
   $("adminToggle").classList.toggle("hidden", !isAdmin);
   if (!isAdmin) $("adminPanel").classList.add("hidden");
   $("joinPanel").classList.toggle("hidden", playerId >= 0);
@@ -433,7 +437,7 @@ function render() {
 
   $("inventory").innerHTML = items.map((name, i) => {
     const count = me ? me.inv[i] : 0;
-    const disabled = !isMyTurn || count <= 0 ? " disabled" : "";
+    const disabled = !isMyTurn || jammed || count <= 0 ? " disabled" : "";
     return `<button type="button"${disabled} onclick="useItem('${name}')">${itemLabel(name)} <small>${count}</small></button>`;
   }).join("");
   const pendingScans = me ? Number(me.pending_scans) || 0 : 0;
