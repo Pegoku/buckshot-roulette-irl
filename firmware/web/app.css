@@ -65,6 +65,15 @@ body {
   text-rendering: geometricPrecision;
 }
 
+body.dead-player {
+  --line: #ff4058;
+  --line-dim: #8f2430;
+  --text: #ff4058;
+  --muted: #b83240;
+  --crt-red: rgba(255, 64, 88, .3);
+  --crt-blue: rgba(80, 0, 12, .18);
+}
+
 body::before,
 body::after {
   content: "";

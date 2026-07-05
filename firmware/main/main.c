@@ -55,8 +55,8 @@
 #define PLAYER_TIMEOUT_MS 20000
 #define PLAYER_TIMEOUT_RETRY_MS 2000
 #define PLAYER_TIMEOUT_RETRIES 3
-#define TFT_SHOT_ANIM_MS 1400
-#define TFT_SHOT_BULLET_MS 920
+#define TFT_SHOT_ANIM_MS 900
+#define TFT_SHOT_BULLET_MS 500
 
 #define COLOR_BLACK 0x0000
 #define COLOR_WHITE 0xffff
@@ -100,6 +100,7 @@ typedef struct {
     uint32_t join_order;
     uint32_t last_seen_ms;
     uint32_t next_timeout_ms;
+    uint32_t nfc_use_block_until_ms;
     char name[MAX_NAME_LEN + 1];
     uint8_t inv[MAX_ITEMS];
     uint8_t pending_item_scans;
@@ -162,6 +163,7 @@ static char ap_ssid[32];
 static char join_token[17];
 static char join_path[32];
 static char join_url[64];
+static const char *DEV_JOIN_PATH = "/join/allow";
 
 extern const unsigned char server_crt_start[] asm("_binary_server_crt_start");
 extern const unsigned char server_crt_end[] asm("_binary_server_crt_end");
@@ -673,11 +675,20 @@ static void lcd_draw_game_screen(void)
         tft_shell_sprite(rail, snap.last_shot_live, 252, 1, 128, 0, LV_OPA_COVER);
         rail_slot = 1;
     }
-    for (int i = snap.shell_index; i < snap.shell_count; i++) {
+    uint8_t rail_live = snap_live_remaining(&snap);
+    uint8_t rail_blank = snap.shell_count - snap.shell_index - rail_live;
+    for (int i = 0; i < rail_blank; i++) {
         if (rail_slot >= MAX_SHELLS) {
             break;
         }
-        tft_shell_sprite(rail, snap.shells[i], 252 - rail_slot * 29, 1, 128, 0, LV_OPA_COVER);
+        tft_shell_sprite(rail, false, 252 - rail_slot * 29, 1, 128, 0, LV_OPA_COVER);
+        rail_slot++;
+    }
+    for (int i = 0; i < rail_live; i++) {
+        if (rail_slot >= MAX_SHELLS) {
+            break;
+        }
+        tft_shell_sprite(rail, true, 252 - rail_slot * 29, 1, 128, 0, LV_OPA_COVER);
         rail_slot++;
     }
 
@@ -729,7 +740,7 @@ static void lcd_draw_game_screen(void)
             int squash = elapsed > 620 ? 288 : 256;
             int x = 176 - travel + shake;
             int y = 82 + drop - (shake / 2);
-            int16_t angle = 900;
+            int16_t angle = 2700;
             tft_shell_sprite(root, snap.last_shot_live, x, y, squash, angle, LV_OPA_COVER);
         } else {
             uint32_t smoke_elapsed = elapsed - TFT_SHOT_BULLET_MS;
@@ -1054,10 +1065,12 @@ static void request_item_scans(void)
     for (int p = 0; p < MAX_PLAYERS; p++) {
         if (!game.players[p].active || !game.players[p].alive) {
             game.players[p].pending_item_scans = 0;
+            game.players[p].nfc_use_block_until_ms = 0;
             continue;
         }
         uint8_t room = MAX_PLAYER_ITEMS - inventory_count(&game.players[p]);
         game.players[p].pending_item_scans = game.items_per_player < room ? game.items_per_player : room;
+        game.players[p].nfc_use_block_until_ms = 0;
     }
 }
 
@@ -1295,6 +1308,11 @@ static void send_error(httpd_req_t *req, const char *msg)
     send_json(req, json);
 }
 
+static bool valid_join_path(const char *path)
+{
+    return strcmp(path, join_path) == 0 || strcmp(path, DEV_JOIN_PATH) == 0;
+}
+
 static esp_err_t api_state(httpd_req_t *req)
 {
     char json[2300];
@@ -1306,13 +1324,14 @@ static esp_err_t api_state(httpd_req_t *req)
     bool known_player = pid >= 0 && pid < MAX_PLAYERS && game.players[pid].active;
     uint8_t live = live_remaining();
     uint8_t blank = game.shell_count - game.shell_index - live;
+    uint8_t pending_total = pending_scan_total();
     w += snprintf(w, end - w,
                   "{\"ok\":true,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
                   "\"you\":%s,\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
-                  "\"live_remaining\":%u,\"blank_remaining\":%u,\"armed_target\":%d,",
+                  "\"live_remaining\":%u,\"blank_remaining\":%u,\"pending_scan_total\":%u,\"armed_target\":%d,",
                   ap_ssid, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
                   game.admin_id, game.player_count, game.current, game.winner,
-                  game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, game.armed_target);
+                  game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, pending_total, game.armed_target);
     if (game.armed_target >= 0 && game.armed_target < MAX_PLAYERS && game.players[game.armed_target].active) {
         w += snprintf(w, end - w, "\"armed_target_name\":\"%s\",", game.players[game.armed_target].name);
     } else {
@@ -1354,7 +1373,7 @@ static esp_err_t api_register(httpd_req_t *req)
     sanitize_name(name, sizeof(name), raw);
 
     lock_game();
-    if (strcmp(join, join_path) != 0) {
+    if (!valid_join_path(join)) {
         unlock_game();
         send_error(req, "invalid session");
         return ESP_OK;
@@ -1504,14 +1523,20 @@ static void decrement_item(player_t *p, item_t item)
     }
 }
 
-static const char *apply_item_locked(player_t *p, item_t item, int target)
+static const char *apply_item_locked(player_t *p, item_t item, int target, item_t steal_item)
 {
     player_t *t = player_by_id(target);
     if (game.phase != PHASE_ACTIVE || !p || !p->alive || game.current != p->id || item == ITEM_INVALID || p->inv[item] == 0) {
         return "bad item";
     }
+    if (p->nfc_use_block_until_ms && (int32_t)(p->nfc_use_block_until_ms - now_ms()) > 0) {
+        return "items locked briefly";
+    }
     if ((item == ITEM_JAMMER || item == ITEM_ADRENALINE) && (!t || !t->alive || t->id == p->id)) {
         return "select target";
+    }
+    if (item == ITEM_ADRENALINE && (steal_item <= ITEM_ADRENALINE || steal_item == ITEM_INVALID || t->inv[steal_item] == 0)) {
+        return "select item";
     }
     decrement_item(p, item);
     switch (item) {
@@ -1570,14 +1595,11 @@ static const char *apply_item_locked(player_t *p, item_t item, int target)
         }
         break;
     case ITEM_ADRENALINE:
-        for (int i = 1; i < MAX_ITEMS; i++) {
-            if (t->inv[i]) {
-                t->inv[i]--;
-                p->inv[i]++;
-                set_message("%s stole %s", p->name, item_names[i]);
-                break;
-            }
+        t->inv[steal_item]--;
+        if (inventory_count(p) < MAX_PLAYER_ITEMS) {
+            p->inv[steal_item]++;
         }
+        set_message("%s stole %s", p->name, item_names[steal_item]);
         break;
     default:
         break;
@@ -1587,7 +1609,7 @@ static const char *apply_item_locked(player_t *p, item_t item, int target)
 
 static esp_err_t api_item(httpd_req_t *req)
 {
-    char body[160], item_name[24];
+    char body[180], item_name[24], steal_name[24];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
@@ -1595,11 +1617,13 @@ static esp_err_t api_item(httpd_req_t *req)
     int pid = param_int(body, "pid", -1);
     int target = param_int(body, "target", -1);
     param_get(body, "item", item_name, sizeof(item_name));
+    param_get(body, "steal", steal_name, sizeof(steal_name));
     item_t item = parse_item(item_name);
+    item_t steal_item = parse_item(steal_name);
 
     lock_game();
     player_t *p = player_by_id(pid);
-    const char *err = apply_item_locked(p, item, target);
+    const char *err = apply_item_locked(p, item, target, steal_item);
     if (err) {
         unlock_game();
         send_error(req, err);
@@ -1612,7 +1636,7 @@ static esp_err_t api_item(httpd_req_t *req)
 
 static esp_err_t api_scan(httpd_req_t *req)
 {
-    char body[180], payload[64];
+    char body[200], payload[64], steal_name[24];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
@@ -1620,6 +1644,8 @@ static esp_err_t api_scan(httpd_req_t *req)
     int pid = param_int(body, "pid", -1);
     int target = param_int(body, "target", -1);
     param_get(body, "payload", payload, sizeof(payload));
+    param_get(body, "steal", steal_name, sizeof(steal_name));
+    item_t steal_item = parse_item(steal_name);
 
     lock_game();
     player_t *p = player_by_id(pid);
@@ -1684,6 +1710,14 @@ static esp_err_t api_scan(httpd_req_t *req)
         }
         p->inv[item]++;
         p->pending_item_scans--;
+        if (pending_scan_total() == 0) {
+            uint32_t until = now_ms() + 5000;
+            for (int i = 0; i < MAX_PLAYERS; i++) {
+                if (game.players[i].active && game.players[i].alive) {
+                    game.players[i].nfc_use_block_until_ms = until;
+                }
+            }
+        }
         set_message("%s scanned %s (%u left)", p->name, item_names[item], p->pending_item_scans);
         unlock_game();
         send_json(req, "{\"ok\":true,\"mode\":\"claim\"}");
@@ -1702,7 +1736,7 @@ static esp_err_t api_scan(httpd_req_t *req)
             return ESP_OK;
         }
     }
-    const char *err = apply_item_locked(p, item, target);
+    const char *err = apply_item_locked(p, item, target, steal_item);
     if (err) {
         unlock_game();
         send_error(req, err);
@@ -1929,7 +1963,7 @@ static esp_err_t http_redirect_handler(httpd_req_t *req)
 
 static esp_err_t join_handler(httpd_req_t *req)
 {
-    if (strcmp(req->uri, join_path) != 0) {
+    if (!valid_join_path(req->uri)) {
         httpd_resp_set_status(req, "302 Found");
         httpd_resp_set_hdr(req, "Location", "/expired");
         httpd_resp_send(req, "Session expired", HTTPD_RESP_USE_STRLEN);
@@ -2111,16 +2145,26 @@ static void display_task(void *arg)
         ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(33));
         uint32_t version = display_version;
         bool animate = false;
+        bool force_draw = false;
         lock_game();
+        uint32_t now = now_ms();
+        if (game.last_shot_valid) {
+            uint32_t shot_age = now - game.last_shot_ms;
+            if (shot_age < TFT_SHOT_ANIM_MS) {
+                animate = true;
+            } else {
+                game.last_shot_valid = false;
+                force_draw = true;
+            }
+        }
         if (game.phase == PHASE_ACTIVE) {
-            uint32_t now = now_ms();
             animate = (uint32_t)(now - game.phase_started_ms) < 4200 ||
                       (uint32_t)(now - game.round_started_ms) < 1100 ||
-                      (game.last_shot_valid && (uint32_t)(now - game.last_shot_ms) < TFT_SHOT_ANIM_MS + 100) ||
+                      animate ||
                       (game.reveal_shell_valid && (int32_t)(game.reveal_shell_until_ms - now) > 0);
         }
         unlock_game();
-        if (version != last_drawn_version || animate) {
+        if (version != last_drawn_version || animate || force_draw) {
             last_drawn_version = version;
             lcd_draw_game_screen();
         } else {

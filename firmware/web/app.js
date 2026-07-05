@@ -13,6 +13,11 @@ let pendingScanPayload = "";
 let pendingScanItem = "";
 let lastNfcPayload = "";
 let lastNfcAt = 0;
+let nfcUsePausedUntil = 0;
+let lastPendingScanTotal = 0;
+let adrenalinePayload = "";
+let adrenalineTarget = -1;
+let adrenalineSteal = "";
 let targetAction = "shot";
 let targetItem = "";
 
@@ -20,6 +25,10 @@ const $ = (id) => document.getElementById(id);
 
 function currentJoinPath() {
   return location.pathname.startsWith("/join/") ? location.pathname : "";
+}
+
+function isAllowedJoinPath(path, expected) {
+  return path === expected || path === "/join/allow";
 }
 
 function expireTab() {
@@ -151,10 +160,88 @@ function setNfcStatus(message) {
   $("scanStatus").textContent = message;
 }
 
+function closeAdrenalinePanel() {
+  adrenalinePayload = "";
+  adrenalineTarget = -1;
+  adrenalineSteal = "";
+  $("adrenalinePanel").classList.add("hidden");
+  $("adrenalineTargets").innerHTML = "";
+  $("adrenalineItems").innerHTML = "";
+  $("adrenalineStatus").textContent = "";
+}
+
+function openAdrenalinePanel(payload = "") {
+  adrenalinePayload = payload;
+  adrenalineTarget = -1;
+  adrenalineSteal = "";
+  $("adrenalinePanel").classList.remove("hidden");
+  $("adrenalineStatus").textContent = "Select an opponent";
+  $("adrenalineItems").innerHTML = "";
+  const opponents = (state ? state.players : []).filter((p) => p.id !== playerId && p.alive);
+  $("adrenalineTargets").innerHTML = opponents.map((p) =>
+    `<button type="button" onclick="chooseAdrenalineTarget(${p.id})">${escapeHtml(p.name)}</button>`
+  ).join("");
+}
+
+window.chooseAdrenalineTarget = (id) => {
+  adrenalineTarget = id;
+  const target = state && state.players.find((p) => p.id === id);
+  if (!target) return;
+  $("adrenalineStatus").textContent = `Select item from ${target.name}`;
+  $("adrenalineItems").innerHTML = items.map((name, index) => {
+    const count = target.inv[index] || 0;
+    if (index === 0 || count <= 0) return "";
+    return `<button type="button" onclick="chooseAdrenalineItem('${name}')">${itemLabel(name)} <small>${count}</small></button>`;
+  }).join("") || "<p class='message'>No stealable items</p>";
+};
+
+window.chooseAdrenalineItem = (item) => {
+  adrenalineSteal = item;
+  $("adrenalineStatus").textContent = `Scan ${itemLabel(item)} tag to verify`;
+};
+
+async function finishAdrenalineUse() {
+  if (!adrenalineSteal || adrenalineTarget < 0) return;
+  if (adrenalinePayload) {
+    await api("/api/scan", {pid: playerId, payload: adrenalinePayload, target: adrenalineTarget, steal: adrenalineSteal});
+  } else {
+    await api("/api/item", {pid: playerId, item: "adrenaline", target: adrenalineTarget, steal: adrenalineSteal});
+  }
+  closeAdrenalinePanel();
+  await refresh();
+  setNfcStatus(`Used Adrenaline`);
+}
+
+async function handleAdrenalineVerification(payload) {
+  const info = payloadInfo(payload);
+  if (!info.valid || info.item !== adrenalineSteal) {
+    $("adrenalineStatus").textContent = `Wrong tag. Scan ${itemLabel(adrenalineSteal)}.`;
+    return;
+  }
+  await finishAdrenalineUse();
+}
+
 async function submitScanPayload(payload, target = selectedTarget) {
+  if (adrenalineSteal) {
+    await handleAdrenalineVerification(payload);
+    return;
+  }
   const info = payloadInfo(payload);
   const me = state && state.players.find((p) => p.id === playerId);
   const claiming = me && Number(me.pending_scans) > 0;
+  const pendingTotal = state ? Number(state.pending_scan_total) || 0 : 0;
+  if (!claiming && pendingTotal > 0) {
+    setNfcStatus("Waiting for others");
+    return;
+  }
+  if (!claiming && Date.now() < nfcUsePausedUntil) {
+    setNfcStatus("Items arming...");
+    return;
+  }
+  if (!claiming && info.valid && info.item === "adrenaline") {
+    openAdrenalinePanel(payload);
+    return;
+  }
   if (!claiming && info.valid && itemNeedsTarget(info.item) && (target < 0 || target === playerId)) {
     pendingScanPayload = payload;
     pendingScanItem = info.item;
@@ -166,8 +253,10 @@ async function submitScanPayload(payload, target = selectedTarget) {
   await refresh();
   const updatedMe = state && state.players.find((p) => p.id === playerId);
   const left = updatedMe ? Number(updatedMe.pending_scans) || 0 : 0;
+  const updatedPendingTotal = state ? Number(state.pending_scan_total) || 0 : 0;
   if (result.mode === "claim") {
-    setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` : "Tag accepted. Item scans complete.");
+    setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` :
+      (updatedPendingTotal > 0 ? "Tag accepted. Waiting for others." : "Tag accepted. Item scans complete."));
   } else {
     setNfcStatus(`Used ${info.valid ? itemLabel(info.item) : "item"}`);
   }
@@ -211,6 +300,7 @@ function makeDemoState() {
     admin: -1,
     current: 0,
     winner: -1,
+    pending_scan_total: 4,
     message: "terminal link unstable",
     players: [
       {id: 0, name: "Operator", lives: 3, alive: true, admin: false, pending_scans: 2, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
@@ -227,6 +317,7 @@ function clearSession() {
   playerId = -1;
   isAdmin = false;
   selectedTarget = -1;
+  closeAdrenalinePanel();
 }
 
 function escapeHtml(value) {
@@ -267,6 +358,12 @@ function render() {
   const currentPlayer = state.players.find((p) => p.id === state.current);
   const isMyTurn = Boolean(me && me.id === state.current && state.phase !== "lobby" && state.winner < 0);
   const maxLives = Math.max(3, ...state.players.map((p) => Number(p.lives) || 0));
+  const pendingScanTotal = Number(state.pending_scan_total) || 0;
+  if (lastPendingScanTotal > 0 && pendingScanTotal === 0) {
+    nfcUsePausedUntil = Date.now() + 5000;
+  }
+  lastPendingScanTotal = pendingScanTotal;
+  document.body.classList.toggle("dead-player", Boolean(me && !me.alive));
 
   const turnTitle = $("turnTitle");
   let title = "WAITING";
@@ -342,11 +439,11 @@ function render() {
   const pendingScans = me ? Number(me.pending_scans) || 0 : 0;
   $("scan").textContent = pendingScans > 0 ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"}` : "No item scans";
   $("scan").disabled = playerId < 0 || state.phase !== "active" || pendingScans <= 0;
-  const needsScans = playerId >= 0 && state.phase === "active" && pendingScans > 0;
+  const needsScans = playerId >= 0 && state.phase === "active" && pendingScanTotal > 0;
   $("scanPanel").classList.toggle("hidden", !needsScans);
   $("scanPrompt").textContent = pendingScans > 0
     ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"} to continue.`
-    : "Item scans complete.";
+    : "Waiting for others";
   $("scanRequired").textContent = playerNfcReader ? "NFC listening" : "Start NFC";
   $("scanRequired").disabled = playerNfcReader || !needsScans;
   if (playerId >= 0) startPlayerNfc();
@@ -391,7 +488,7 @@ async function refresh() {
     return;
   }
   state = await api(`/api/state?pid=${playerId}`);
-  if (currentJoinPath() && state.join && currentJoinPath() !== state.join) {
+  if (currentJoinPath() && state.join && !isAllowedJoinPath(currentJoinPath(), state.join)) {
     expireTab();
     return;
   }
@@ -495,7 +592,9 @@ async function useItemWithTarget(item, target) {
 }
 
 async function useItem(item) {
-  if (itemNeedsTarget(item)) {
+  if (item === "adrenaline") {
+    openAdrenalinePanel("");
+  } else if (itemNeedsTarget(item)) {
     openTargetDialog("item", item);
   } else {
     await useItemWithTarget(item, playerId);
@@ -597,6 +696,7 @@ $("closeNfc").onclick = closeNfcPanel;
 $("testNfc").onclick = testNfc;
 $("writeNfc").onclick = openWriteNfcPanel;
 $("cancelNfcWrite").onclick = closeWriteNfcPanel;
+$("cancelAdrenaline").onclick = closeAdrenalinePanel;
 $("closeTarget").onclick = () => {
   targetAction = "shot";
   targetItem = "";
