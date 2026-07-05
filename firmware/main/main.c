@@ -12,6 +12,7 @@
 #include "esp_event.h"
 #include "esp_https_server.h"
 #include "esp_http_server.h"
+#include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
@@ -25,6 +26,7 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "qrcode.h"
+#include "lvgl.h"
 
 #define PIN_LCD_MOSI 11
 #define PIN_LCD_MISO -1
@@ -62,6 +64,9 @@
 #define COLOR_CYAN 0x07ff
 #define COLOR_MAGENTA 0xf81f
 #define COLOR_GRAY 0x7bef
+#define COLOR_DARK 0x0103
+#define COLOR_DIM_GREEN 0x0368
+#define COLOR_AMBER 0xfd20
 
 typedef enum {
     PHASE_LOBBY,
@@ -122,6 +127,12 @@ typedef struct {
     uint8_t shell_index;
     uint8_t shells[MAX_SHELLS];
     bool saw_active;
+    uint16_t round;
+    uint32_t phase_started_ms;
+    uint32_t round_started_ms;
+    uint32_t last_shot_ms;
+    bool last_shot_live;
+    bool last_shot_valid;
     char message[96];
     player_t players[MAX_PLAYERS];
     token_t tokens[MAX_TOKENS];
@@ -131,6 +142,11 @@ static const char *TAG = "buckshot";
 static spi_device_handle_t lcd_spi;
 static SemaphoreHandle_t game_lock;
 static TaskHandle_t display_task_handle;
+static lv_disp_draw_buf_t lvgl_draw_buf;
+static lv_disp_t *lvgl_disp;
+static lv_color_t *lvgl_buf1;
+static lv_color_t *lvgl_buf2;
+static uint16_t lvgl_tx_line[LCD_WIDTH];
 static game_t game;
 static volatile bool trigger_event;
 static volatile uint32_t display_version;
@@ -280,6 +296,64 @@ static void lcd_fill_rect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16
     }
 }
 
+static void lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_p)
+{
+    int32_t x1 = area->x1 < 0 ? 0 : area->x1;
+    int32_t y1 = area->y1 < 0 ? 0 : area->y1;
+    int32_t x2 = area->x2 >= LCD_WIDTH ? LCD_WIDTH - 1 : area->x2;
+    int32_t y2 = area->y2 >= LCD_HEIGHT ? LCD_HEIGHT - 1 : area->y2;
+    if (x2 < x1 || y2 < y1) {
+        lv_disp_flush_ready(drv);
+        return;
+    }
+
+    int32_t area_w = area->x2 - area->x1 + 1;
+    int32_t draw_w = x2 - x1 + 1;
+    lcd_set_window(x1, y1, x2, y2);
+    gpio_set_level(PIN_LCD_DC, 1);
+    for (int32_t y = y1; y <= y2; y++) {
+        lv_color_t *row = color_p + (y - area->y1) * area_w + (x1 - area->x1);
+        for (int32_t x = 0; x < draw_w; x++) {
+            lvgl_tx_line[x] = color_swap(row[x].full);
+        }
+        spi_transaction_t t = {.length = draw_w * 16, .tx_buffer = lvgl_tx_line};
+        ESP_ERROR_CHECK(spi_device_polling_transmit(lcd_spi, &t));
+    }
+    lv_disp_flush_ready(drv);
+}
+
+static void lvgl_tick_cb(void *arg)
+{
+    (void)arg;
+    lv_tick_inc(2);
+}
+
+static void lvgl_port_init(void)
+{
+    lv_init();
+    const size_t pixels = LCD_WIDTH * 24;
+    lvgl_buf1 = heap_caps_malloc(pixels * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    lvgl_buf2 = heap_caps_malloc(pixels * sizeof(lv_color_t), MALLOC_CAP_DMA);
+    ESP_ERROR_CHECK(lvgl_buf1 && lvgl_buf2 ? ESP_OK : ESP_ERR_NO_MEM);
+    lv_disp_draw_buf_init(&lvgl_draw_buf, lvgl_buf1, lvgl_buf2, pixels);
+
+    static lv_disp_drv_t disp_drv;
+    lv_disp_drv_init(&disp_drv);
+    disp_drv.hor_res = LCD_WIDTH;
+    disp_drv.ver_res = LCD_HEIGHT;
+    disp_drv.flush_cb = lvgl_flush_cb;
+    disp_drv.draw_buf = &lvgl_draw_buf;
+    lvgl_disp = lv_disp_drv_register(&disp_drv);
+
+    const esp_timer_create_args_t tick_args = {
+        .callback = lvgl_tick_cb,
+        .name = "lvgl_tick",
+    };
+    esp_timer_handle_t tick_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&tick_args, &tick_timer));
+    ESP_ERROR_CHECK(esp_timer_start_periodic(tick_timer, 2000));
+}
+
 static void lcd_draw_digit(uint16_t x, uint16_t y, int digit, uint16_t color, uint16_t scale)
 {
     if (digit < 0 || digit > 9) {
@@ -294,7 +368,7 @@ static void lcd_draw_digit(uint16_t x, uint16_t y, int digit, uint16_t color, ui
     }
 }
 
-static void lcd_draw_number(uint16_t x, uint16_t y, uint32_t value, uint16_t color, uint16_t scale)
+static void __attribute__((unused)) lcd_draw_number(uint16_t x, uint16_t y, uint32_t value, uint16_t color, uint16_t scale)
 {
     char text[12];
     snprintf(text, sizeof(text), "%lu", (unsigned long)value);
@@ -374,7 +448,7 @@ static void lcd_draw_char5x7(uint16_t x, uint16_t y, char c, uint16_t color, uin
     }
 }
 
-static void lcd_draw_text_center(uint16_t y, const char *text, uint16_t color, uint16_t scale)
+static void __attribute__((unused)) lcd_draw_text_center(uint16_t y, const char *text, uint16_t color, uint16_t scale)
 {
     size_t len = strlen(text);
     uint16_t char_w = 6 * scale;
@@ -384,6 +458,71 @@ static void lcd_draw_text_center(uint16_t y, const char *text, uint16_t color, u
         lcd_draw_char5x7(x, y, text[i], color, scale);
         x += char_w;
     }
+}
+
+static const lv_font_t *tft_font(void)
+{
+#if LV_FONT_UNSCII_8
+    return &lv_font_unscii_8;
+#else
+    return LV_FONT_DEFAULT;
+#endif
+}
+
+static lv_obj_t *tft_label(lv_obj_t *parent, const char *text, int x, int y, lv_color_t color, int scale)
+{
+    lv_obj_t *label = lv_label_create(parent);
+    lv_label_set_text(label, text);
+    lv_obj_set_style_text_font(label, tft_font(), 0);
+    lv_obj_set_style_text_color(label, color, 0);
+    lv_obj_set_style_text_letter_space(label, 1, 0);
+    lv_obj_set_style_transform_zoom(label, 256 * scale, 0);
+    lv_obj_set_pos(label, x, y);
+    return label;
+}
+
+static lv_obj_t *tft_panel(lv_obj_t *parent, int x, int y, int w, int h, lv_color_t border, lv_opa_t opa)
+{
+    lv_obj_t *obj = lv_obj_create(parent);
+    lv_obj_remove_style_all(obj);
+    lv_obj_set_pos(obj, x, y);
+    lv_obj_set_size(obj, w, h);
+    lv_obj_set_style_bg_color(obj, lv_color_hex(0x020604), 0);
+    lv_obj_set_style_bg_opa(obj, opa, 0);
+    lv_obj_set_style_border_width(obj, 1, 0);
+    lv_obj_set_style_border_color(obj, border, 0);
+    lv_obj_set_style_radius(obj, 0, 0);
+    return obj;
+}
+
+static void tft_crt_base(lv_obj_t *root)
+{
+    lv_obj_clean(root);
+    lv_obj_set_style_bg_color(root, lv_color_hex(0x020503), 0);
+    lv_obj_set_style_bg_opa(root, LV_OPA_COVER, 0);
+    for (int y = 0; y < LCD_HEIGHT; y += 8) {
+        lv_obj_t *line = lv_obj_create(root);
+        lv_obj_remove_style_all(line);
+        lv_obj_set_pos(line, 0, y);
+        lv_obj_set_size(line, LCD_WIDTH, 1);
+        lv_obj_set_style_bg_color(line, lv_color_hex(0x063817), 0);
+        lv_obj_set_style_bg_opa(line, y % 16 ? LV_OPA_20 : LV_OPA_30, 0);
+    }
+    tft_panel(root, 6, 6, LCD_WIDTH - 12, LCD_HEIGHT - 12, lv_color_hex(0x0a7a36), LV_OPA_20);
+}
+
+static void tft_render_now(void)
+{
+    lv_refr_now(lvgl_disp);
+}
+
+static uint8_t snap_live_remaining(const game_t *snap)
+{
+    uint8_t live = 0;
+    for (int i = snap->shell_index; i < snap->shell_count; i++) {
+        live += snap->shells[i] ? 1 : 0;
+    }
+    return live;
 }
 
 static void lcd_draw_token_qr_hint(void)
@@ -418,19 +557,31 @@ static void lcd_draw_qr_callback(esp_qrcode_handle_t qrcode)
 
 static void lcd_draw_join_qr(const game_t *snap)
 {
-    lcd_fill_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
-    lcd_fill_rect(0, 0, LCD_WIDTH, 32, COLOR_BLUE);
-    lcd_draw_text_center(6, ap_ssid, COLOR_WHITE, 3);
+    lv_obj_t *root = lv_scr_act();
+    tft_crt_base(root);
+    lv_obj_t *bar = tft_panel(root, 12, 12, LCD_WIDTH - 24, 28, lv_color_hex(0x00ff66), LV_OPA_30);
+    lv_obj_set_style_bg_color(bar, lv_color_hex(0x052716), 0);
+    tft_label(bar, ap_ssid, 8, 7, lv_color_hex(0x00ff66), 1);
+
+    char players[24];
+    snprintf(players, sizeof(players), "P:%u/4", snap->player_count);
+    tft_label(root, players, 18, 210, lv_color_hex(0x00ff66), 2);
+    if (snap->admin_id != 255) {
+        char admin[24];
+        snprintf(admin, sizeof(admin), "ADMIN:P%u", snap->admin_id + 1);
+        tft_label(root, admin, 206, 212, lv_color_hex(0xffd447), 1);
+    } else {
+        tft_label(root, "SCAN QR", 216, 212, lv_color_hex(0x168f4a), 1);
+    }
+    tft_label(root, "LIVE TERMINAL", 18, 44, lv_color_hex(0x168f4a), 1);
+    tft_render_now();
+
     esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
     cfg.display_func = lcd_draw_qr_callback;
     cfg.max_qrcode_version = 6;
     cfg.qrcode_ecc_level = ESP_QRCODE_ECC_LOW;
     if (esp_qrcode_generate(&cfg, join_url) != ESP_OK) {
         lcd_draw_token_qr_hint();
-    }
-    lcd_draw_number(18, 210, snap->player_count, COLOR_WHITE, 6);
-    if (snap->admin_id != 255) {
-        lcd_draw_number(260, 210, snap->admin_id + 1, COLOR_YELLOW, 6);
     }
 }
 
@@ -446,38 +597,108 @@ static void lcd_draw_game_screen(void)
         return;
     }
 
-    lcd_fill_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
-    uint16_t top = snap.phase == PHASE_LOBBY ? COLOR_BLUE : (snap.phase == PHASE_GAME_OVER ? COLOR_GREEN : COLOR_RED);
-    lcd_fill_rect(0, 0, LCD_WIDTH, 32, top);
+    uint32_t now = now_ms();
+    lv_obj_t *root = lv_scr_act();
+    tft_crt_base(root);
+    lv_obj_t *bar = tft_panel(root, 12, 12, LCD_WIDTH - 24, 30, lv_color_hex(0x00ff66), LV_OPA_30);
+    lv_obj_set_style_bg_color(bar, lv_color_hex(0x031c10), 0);
 
-    lcd_draw_number(16, 50, snap.player_count, COLOR_WHITE, 12);
-    lcd_draw_number(84, 50, snap.current + 1, COLOR_CYAN, 12);
-    lcd_draw_number(152, 50, snap.shell_index, COLOR_YELLOW, 12);
-    lcd_draw_number(220, 50, snap.shell_count, COLOR_MAGENTA, 12);
+    char title[32];
+    if (snap.phase == PHASE_GAME_OVER && snap.winner >= 0 && snap.winner < MAX_PLAYERS) {
+        snprintf(title, sizeof(title), "%s WON", snap.players[snap.winner].name);
+    } else {
+        snprintf(title, sizeof(title), "ROUND %u", snap.round ? snap.round : 1);
+    }
+    tft_label(bar, title, 8, 8, lv_color_hex(0x00ff66), 1);
+    char count[32];
+    uint8_t live = snap_live_remaining(&snap);
+    snprintf(count, sizeof(count), "L%u B%u", live, snap.shell_count - snap.shell_index - live);
+    tft_label(bar, count, 220, 8, lv_color_hex(0xffd447), 1);
 
     int visible = 0;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (!snap.players[i].active) {
             continue;
         }
-        uint16_t y = 122 + i * 20;
-        uint16_t color = snap.players[i].alive ? COLOR_GREEN : COLOR_GRAY;
-        y = 122 + visible * 20;
-        if (i == snap.current && snap.phase == PHASE_ACTIVE) {
-            color = COLOR_YELLOW;
+        int y = 56 + visible * 29;
+        bool current = i == snap.current && snap.phase == PHASE_ACTIVE;
+        lv_color_t border = current ? lv_color_hex(0xffd447) : (snap.players[i].alive ? lv_color_hex(0x00ff66) : lv_color_hex(0x31523d));
+        lv_obj_t *row = tft_panel(root, 18, y, 284, 22, border, current ? LV_OPA_30 : LV_OPA_20);
+        char line[64];
+        snprintf(line, sizeof(line), "P%u %-15s", i + 1, snap.players[i].name);
+        tft_label(row, line, 6, 6, snap.players[i].alive ? lv_color_hex(0x00ff66) : lv_color_hex(0x6a7f70), 1);
+        for (int life = 0; life < snap.max_lives && life < 9; life++) {
+            lv_obj_t *pip = lv_obj_create(row);
+            lv_obj_remove_style_all(pip);
+            lv_obj_set_pos(pip, 204 + life * 8, 6);
+            lv_obj_set_size(pip, 5, 10);
+            lv_obj_set_style_bg_color(pip, life < snap.players[i].lives ? lv_color_hex(0x00ff66) : lv_color_hex(0x203326), 0);
+            lv_obj_set_style_bg_opa(pip, LV_OPA_COVER, 0);
         }
-        lcd_fill_rect(18, y, 132, 14, color);
-        lcd_draw_number(162, y - 2, snap.players[i].lives, COLOR_WHITE, 4);
         visible++;
     }
 
+    lv_obj_t *rail = tft_panel(root, 18, 184, 284, 34, lv_color_hex(0x00ff66), LV_OPA_20);
     for (int i = snap.shell_index; i < snap.shell_count; i++) {
-        uint16_t x = 18 + (i - snap.shell_index) * 34;
-        uint16_t color = snap.shells[i] ? COLOR_RED : COLOR_WHITE;
-        lcd_fill_rect(x, 184, 24, 14, color);
+        int slot = i - snap.shell_index;
+        lv_obj_t *shell = lv_obj_create(rail);
+        lv_obj_remove_style_all(shell);
+        lv_obj_set_pos(shell, 252 - slot * 31, 10);
+        lv_obj_set_size(shell, 24, 12);
+        lv_obj_set_style_bg_color(shell, snap.shells[i] ? lv_color_hex(0xe13d2f) : lv_color_hex(0xd8e6d6), 0);
+        lv_obj_set_style_bg_opa(shell, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(shell, 5, 0);
+        lv_obj_set_style_border_width(shell, 1, 0);
+        lv_obj_set_style_border_color(shell, lv_color_hex(0x07130b), 0);
     }
 
-    lcd_draw_token_qr_hint();
+    if (snap.phase == PHASE_ACTIVE && now - snap.phase_started_ms < 4200) {
+        uint32_t elapsed = now - snap.phase_started_ms;
+        const char *msg = "GET READY";
+        if (elapsed > 1000 && elapsed <= 2000) {
+            msg = "3";
+        } else if (elapsed > 2000 && elapsed <= 3000) {
+            msg = "2";
+        } else if (elapsed > 3000) {
+            msg = "1";
+        }
+        lv_obj_t *overlay = tft_panel(root, 28, 72, 264, 96, lv_color_hex(0xffd447), LV_OPA_80);
+        tft_label(overlay, msg, msg[1] ? 52 : 120, 34, lv_color_hex(0xffd447), msg[1] ? 2 : 4);
+    } else if (snap.phase == PHASE_ACTIVE && now - snap.round_started_ms < 1100) {
+        int shake = ((now / 70) % 3) - 1;
+        lv_obj_t *overlay = tft_panel(root, 62 + shake * 3, 80, 196, 70, lv_color_hex(0x00ff66), LV_OPA_70);
+        char round[24];
+        snprintf(round, sizeof(round), "ROUND %u", snap.round);
+        tft_label(overlay, round, 34, 25, lv_color_hex(0x00ff66), 2);
+    }
+
+    if (snap.last_shot_valid && now - snap.last_shot_ms < 1000) {
+        uint32_t elapsed = now - snap.last_shot_ms;
+        lv_obj_t *shade = lv_obj_create(root);
+        lv_obj_remove_style_all(shade);
+        lv_obj_set_pos(shade, 0, 0);
+        lv_obj_set_size(shade, LCD_WIDTH, LCD_HEIGHT);
+        lv_obj_set_style_bg_color(shade, lv_color_hex(0x08100b), 0);
+        lv_obj_set_style_bg_opa(shade, LV_OPA_60, 0);
+        lv_obj_t *round = lv_obj_create(root);
+        lv_obj_remove_style_all(round);
+        lv_obj_set_pos(round, 190 - (elapsed / 10), 108 + (elapsed % 80 < 40 ? -2 : 2));
+        lv_obj_set_size(round, 58, 16);
+        lv_obj_set_style_bg_color(round, snap.last_shot_live ? lv_color_hex(0xe13d2f) : lv_color_hex(0xd8e6d6), 0);
+        lv_obj_set_style_bg_opa(round, LV_OPA_COVER, 0);
+        lv_obj_set_style_radius(round, 8, 0);
+        const char *smoke = snap.last_shot_live ? "BANG" : "PUFF";
+        tft_label(root, smoke, 124, 136, snap.last_shot_live ? lv_color_hex(0xe13d2f) : lv_color_hex(0xd8e6d6), 2);
+    }
+
+    if (snap.phase == PHASE_GAME_OVER && snap.winner >= 0 && snap.winner < MAX_PLAYERS) {
+        lv_obj_t *overlay = tft_panel(root, 24, 74, 272, 92, lv_color_hex(0xffd447), LV_OPA_80);
+        char won[64];
+        snprintf(won, sizeof(won), "%s WON", snap.players[snap.winner].name);
+        tft_label(overlay, won, 18, 26, lv_color_hex(0xffd447), 2);
+        tft_label(overlay, "THE GAMBLE", 56, 58, lv_color_hex(0x00ff66), 1);
+    }
+    tft_render_now();
 }
 
 static void lcd_init(void)
@@ -522,6 +743,7 @@ static void lcd_init(void)
     lcd_cmd(0x29);
     gpio_set_level(PIN_LCD_BL, 1);
     lcd_fill_rect(0, 0, LCD_WIDTH, LCD_HEIGHT, COLOR_BLACK);
+    lvgl_port_init();
 }
 
 static const char *phase_name(phase_t phase)
@@ -792,6 +1014,8 @@ static void give_random_items(void)
 static void reload_if_needed(void)
 {
     if (game.phase == PHASE_ACTIVE && game.shell_index >= game.shell_count) {
+        game.round++;
+        game.round_started_ms = now_ms();
         shuffle_shells();
         give_random_items();
         set_message("New load: %u live, %u blank", live_remaining(), game.shell_count - live_remaining());
@@ -805,6 +1029,7 @@ static void check_game_over(void)
         game.winner = winner;
         game.phase = PHASE_GAME_OVER;
         game.armed_target = -1;
+        game.phase_started_ms = now_ms();
         set_message("%s wins", game.players[winner].name);
     }
 }
@@ -823,6 +1048,9 @@ static void resolve_shot(void)
     }
 
     bool live = game.shells[game.shell_index++] != 0;
+    game.last_shot_live = live;
+    game.last_shot_valid = true;
+    game.last_shot_ms = now_ms();
     uint8_t damage = game.saw_active && live ? 2 : 1;
     bool keep_turn = !live && target->id == shooter->id;
 
@@ -871,6 +1099,11 @@ static void game_reset(void)
     game.max_shells = 6;
     game.live_shells_setting = 3;
     game.items_per_player = 2;
+    game.round = 0;
+    game.phase_started_ms = now_ms();
+    game.round_started_ms = 0;
+    game.last_shot_valid = false;
+    game.last_shot_ms = 0;
     set_message("Join from QR URL");
 }
 
@@ -1142,6 +1375,10 @@ static esp_err_t api_start(httpd_req_t *req)
     game.direction = 1;
     game.armed_target = -1;
     game.saw_active = false;
+    game.round = 1;
+    game.phase_started_ms = now_ms();
+    game.round_started_ms = game.phase_started_ms;
+    game.last_shot_valid = false;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (game.players[i].active) {
             game.players[i].alive = true;
@@ -1772,14 +2009,25 @@ static void game_task(void *arg)
 
 static void display_task(void *arg)
 {
+    ESP_LOGI(TAG, "Display task started");
     uint32_t last_drawn_version = UINT32_MAX;
     while (true) {
-        ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
-        vTaskDelay(pdMS_TO_TICKS(30));
+        ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(33));
         uint32_t version = display_version;
-        if (version != last_drawn_version) {
+        bool animate = false;
+        lock_game();
+        if (game.phase == PHASE_ACTIVE) {
+            uint32_t now = now_ms();
+            animate = (uint32_t)(now - game.phase_started_ms) < 4200 ||
+                      (uint32_t)(now - game.round_started_ms) < 1100 ||
+                      (game.last_shot_valid && (uint32_t)(now - game.last_shot_ms) < 1000);
+        }
+        unlock_game();
+        if (version != last_drawn_version || animate) {
             last_drawn_version = version;
             lcd_draw_game_screen();
+        } else {
+            lv_timer_handler();
         }
     }
 }
@@ -1805,12 +2053,13 @@ void app_main(void)
 
     start_spiffs();
     lcd_init();
+    xTaskCreatePinnedToCore(display_task, "display", 16384, NULL, 6, &display_task_handle, 1);
+    mark_display_dirty();
+
     start_wifi_ap();
     start_https_server();
     start_http_redirect_server();
 
     xTaskCreatePinnedToCore(button_task, "button", 2048, NULL, 10, NULL, 0);
     xTaskCreatePinnedToCore(game_task, "game", 4096, NULL, 8, NULL, 0);
-    xTaskCreatePinnedToCore(display_task, "display", 4096, NULL, 5, &display_task_handle, 1);
-    mark_display_dirty();
 }
