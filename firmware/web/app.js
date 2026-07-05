@@ -251,8 +251,8 @@ async function refresh() {
 
 async function join() {
   try {
-    const typed = $("name").value.trim();
-    const name = typed || `P${Math.floor(Math.random() * 1000)}`;
+    const name = $("name").value.trim();
+    if (!name) return;
     const r = await api("/api/register", {name});
     playerId = r.pid;
     isAdmin = r.admin === 1;
@@ -265,6 +265,10 @@ async function join() {
   } catch (e) {
     $("joinStatus").textContent = e.message;
   }
+}
+
+function syncJoinButton() {
+  $("join").disabled = $("name").value.trim().length === 0;
 }
 
 async function setup() {
@@ -359,10 +363,11 @@ $("shot").onclick = () => $("targetDialog").classList.remove("hidden");
 $("adminToggle").onclick = () => $("adminPanel").classList.toggle("hidden");
 $("closeAdmin").onclick = () => $("adminPanel").classList.add("hidden");
 $("join").onclick = join;
+$("name").addEventListener("input", syncJoinButton);
 $("name").addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
     event.preventDefault();
-    join();
+    if (!$("join").disabled) join();
   }
 });
 $("saveSetup").onclick = setup;
@@ -404,4 +409,5 @@ async function boot() {
 }
 
 boot();
+syncJoinButton();
 setInterval(() => refresh().catch(() => {}), 1500);
