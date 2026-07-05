@@ -47,6 +47,7 @@
 #define MAX_SHELLS 8
 #define MAX_ITEMS 9
 #define MAX_TOKENS 40
+#define MAX_PLAYER_ITEMS 8
 #define BUTTON_POLL_DELAY_TICKS 1
 #define PLAYER_TIMEOUT_MS 20000
 #define PLAYER_TIMEOUT_RETRY_MS 2000
@@ -163,6 +164,28 @@ static const char *item_names[MAX_ITEMS] = {
 static uint8_t alive_count(void);
 static int next_player_from(int start);
 static void set_message(const char *fmt, ...);
+
+static uint8_t inventory_count(const player_t *p)
+{
+    uint8_t count = 0;
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        count += p->inv[i];
+    }
+    return count;
+}
+
+static item_t random_dealable_item(void)
+{
+    uint8_t choices[MAX_ITEMS];
+    uint8_t count = 0;
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        if (i == ITEM_REMOTE && alive_count() <= 2) {
+            continue;
+        }
+        choices[count++] = i;
+    }
+    return (item_t)choices[esp_random() % count];
+}
 
 static uint32_t now_ms(void)
 {
@@ -758,7 +781,10 @@ static void give_random_items(void)
             continue;
         }
         for (int i = 0; i < game.items_per_player; i++) {
-            game.players[p].inv[esp_random() % MAX_ITEMS]++;
+            if (inventory_count(&game.players[p]) >= MAX_PLAYER_ITEMS) {
+                break;
+            }
+            game.players[p].inv[random_dealable_item()]++;
         }
     }
 }
@@ -1195,15 +1221,18 @@ static esp_err_t api_item(httpd_req_t *req)
         if (game.shell_index < game.shell_count) {
             bool live = game.shells[game.shell_index++] != 0;
             set_message("Beer ejected a %s", live ? "live" : "blank");
-            reload_if_needed();
+            if (game.shell_index >= game.shell_count) {
+                reload_if_needed();
+                advance_turn();
+            }
         }
         break;
     case ITEM_BURNER:
-        if (game.shell_index + 1 < game.shell_count) {
+        if (game.shell_count - game.shell_index > 2) {
             int idx = game.shell_index + 1 + (esp_random() % (game.shell_count - game.shell_index - 1));
             set_message("Burner: shell %d is %s", idx + 1, game.shells[idx] ? "live" : "blank");
         } else {
-            set_message("Burner found no future shell");
+            set_message("Burner: how unfortunate");
         }
         break;
     case ITEM_CIGARETTE:
@@ -1239,8 +1268,12 @@ static esp_err_t api_item(httpd_req_t *req)
         }
         break;
     case ITEM_REMOTE:
-        game.direction *= -1;
-        set_message("Turn order reversed");
+        if (alive_count() > 2) {
+            game.direction *= -1;
+            set_message("Turn order reversed");
+        } else {
+            set_message("Remote did nothing");
+        }
         break;
     case ITEM_ADRENALINE:
         if (t && t->alive && t->id != p->id) {
@@ -1303,6 +1336,11 @@ static esp_err_t api_scan(httpd_req_t *req)
     if (item == ITEM_INVALID) {
         unlock_game();
         send_error(req, "unknown tag");
+        return ESP_OK;
+    }
+    if (inventory_count(p) >= MAX_PLAYER_ITEMS) {
+        unlock_game();
+        send_error(req, "item board full");
         return ESP_OK;
     }
     for (int i = 0; i < MAX_TOKENS; i++) {

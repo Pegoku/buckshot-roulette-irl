@@ -7,6 +7,8 @@ let demoMode = false;
 let wakeLock = null;
 let lastLifeKey = "";
 let nfcAbort = null;
+let targetAction = "shot";
+let targetItem = "";
 
 const $ = (id) => document.getElementById(id);
 
@@ -122,6 +124,10 @@ function payloadFromNfcEvent(event) {
 
 function requireWebNfc() {
   if (!("NDEFReader" in window)) throw new Error("Web NFC is not available");
+}
+
+function itemNeedsTarget(item) {
+  return item === "jammer" || item === "adrenaline";
 }
 
 function makeDemoState() {
@@ -256,14 +262,28 @@ function render() {
 
   $("inventory").innerHTML = items.map((name, i) => {
     const count = me ? me.inv[i] : 0;
-    return `<button onclick="useItem('${name}')">${itemLabel(name)} <small>debug ${count}</small></button>`;
+    const disabled = !isMyTurn || count <= 0 ? " disabled" : "";
+    return `<button type="button"${disabled} onclick="useItem('${name}')">${itemLabel(name)} <small>${count}</small></button>`;
   }).join("");
+}
+
+function openTargetDialog(action, item = "") {
+  targetAction = action;
+  targetItem = item;
+  $("targetTitle").textContent = action === "item" ? `Use ${itemLabel(item)}` : "Shoot target";
+  $("targetDialog").classList.remove("hidden");
 }
 
 window.chooseTarget = async (id) => {
   selectedTarget = id;
   $("targetDialog").classList.add("hidden");
-  await arm(id);
+  if (targetAction === "item") {
+    await useItemWithTarget(targetItem, id);
+  } else {
+    await arm(id);
+  }
+  targetAction = "shot";
+  targetItem = "";
 };
 
 window.chooseSlot = async (slot) => {
@@ -360,19 +380,27 @@ async function arm(target) {
   await refresh();
 }
 
-async function useItem(item) {
+async function useItemWithTarget(item, target) {
   if (demoMode) {
-    $("nfc").textContent = `Debug read ${itemLabel(item)}`;
-    state.message = `${itemLabel(item)} tag read`;
+    $("nfc").textContent = `Used ${itemLabel(item)}`;
+    state.message = `${itemLabel(item)} used`;
     render();
     return;
   }
   try {
-    await api("/api/scan", {pid: playerId, payload: `buckshot:item:${item}:debug`});
-    $("nfc").textContent = `Debug read ${itemLabel(item)}`;
+    await api("/api/item", {pid: playerId, item, target});
+    $("nfc").textContent = `Used ${itemLabel(item)}`;
     await refresh();
   } catch (e) {
     $("nfc").textContent = e.message;
+  }
+}
+
+async function useItem(item) {
+  if (itemNeedsTarget(item)) {
+    openTargetDialog("item", item);
+  } else {
+    await useItemWithTarget(item, playerId);
   }
 }
 
@@ -400,13 +428,16 @@ async function scanNfc() {
 }
 
 function openNfcPanel() {
+  $("adminPanel").classList.add("modal-blocked");
   $("nfcPanel").classList.remove("hidden");
   $("nfcAdminStatus").textContent = state && state.write_mode ? "Write mode is on" : "";
 }
 
 function closeNfcPanel() {
   stopNfcOperation();
+  closeWriteNfcPanel();
   $("nfcPanel").classList.add("hidden");
+  $("adminPanel").classList.remove("modal-blocked");
 }
 
 async function testNfc() {
@@ -468,7 +499,7 @@ window.writeNfcItem = async (item) => {
   }
 };
 
-$("shot").onclick = () => $("targetDialog").classList.remove("hidden");
+$("shot").onclick = () => openTargetDialog("shot");
 $("adminToggle").onclick = () => $("adminPanel").classList.toggle("hidden");
 $("closeAdmin").onclick = () => $("adminPanel").classList.add("hidden");
 $("join").onclick = join;
@@ -487,7 +518,11 @@ $("closeNfc").onclick = closeNfcPanel;
 $("testNfc").onclick = testNfc;
 $("writeNfc").onclick = openWriteNfcPanel;
 $("cancelNfcWrite").onclick = closeWriteNfcPanel;
-$("closeTarget").onclick = () => $("targetDialog").classList.add("hidden");
+$("closeTarget").onclick = () => {
+  targetAction = "shot";
+  targetItem = "";
+  $("targetDialog").classList.add("hidden");
+};
 $("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");
 $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;

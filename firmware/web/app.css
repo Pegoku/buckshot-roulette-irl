@@ -277,7 +277,7 @@ h1 {
   max-width: 10ch;
   min-height: 1.12em;
   color: var(--text);
-  font-size: clamp(34px, 9vw, 78px);
+  font-size: clamp(18px, 4.5vw, 39px);
   font-weight: 400;
   line-height: 1.08;
   text-transform: uppercase;
@@ -414,7 +414,7 @@ h2 {
 .popup {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 40;
   display: grid;
   place-items: center;
   padding: 18px;
@@ -522,6 +522,11 @@ h2 {
   display: none;
 }
 
+.debug-panel.modal-blocked {
+  pointer-events: none;
+  filter: brightness(.58) saturate(.72);
+}
+
 .admin-grid,
 .admin-actions {
   display: grid;
@@ -576,7 +581,7 @@ h2 {
   }
 
   h1 {
-    font-size: clamp(36px, 12vw, 72px);
+    font-size: clamp(18px, 6vw, 36px);
   }
 
   .life-pack {
