@@ -27,7 +27,7 @@
       <div id="hudActions" class="hud-actions hidden">
         <button id="shot" type="button">Shoot</button>
         <button id="adminToggle" type="button" class="hidden">Admin</button>
-        <button id="debugToggle" type="button">Debug</button>
+        <button id="debugToggle" type="button">Items</button>
       </div>
       <p id="session" class="phase">connecting</p>
       <p id="message" class="message"></p>
@@ -102,12 +102,22 @@
 
   <div id="debugPanel" class="debug-panel hidden">
     <div class="popup-head">
-      <h2>Debug NFC</h2>
+      <h2>Items Menu</h2>
       <button id="closeDebug" type="button">Close</button>
     </div>
     <div id="inventory" class="inventory-grid"></div>
-    <button id="scan" class="scan-button" type="button">Scan tag</button>
+    <button id="scan" class="scan-button" type="button">Start NFC</button>
     <p id="nfc" class="message"></p>
+  </div>
+
+  <div id="itemInfoPanel" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="itemInfoTitle">
+    <div class="popup-card">
+      <div class="popup-head">
+        <h2 id="itemInfoTitle">Item</h2>
+        <button id="closeItemInfo" type="button">Close</button>
+      </div>
+      <p id="itemInfoText" class="message"></p>
+    </div>
   </div>
 
   <div id="scanPanel" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="scanTitle">

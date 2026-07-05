@@ -112,6 +112,26 @@ function itemLabel(name) {
   }[name] || name;
 }
 
+function itemDescription(name) {
+  return {
+    adrenaline: "Steal one item from an opponent, verify its tag, and use it immediately.",
+    beer: "Rack out the current shell and reveal whether it was live or blank.",
+    burner: "Peek at a later shell in the current load.",
+    cigarette: "Recover one life, up to the life limit.",
+    saw: "The next live shot deals 2 damage.",
+    inverter: "Flip the current shell from live to blank, or blank to live.",
+    jammer: "Disable one opponent for their next turn.",
+    glass: "Show the current shell on the main display for a few seconds.",
+    remote: "Reverse turn order when more than two players are alive."
+  }[name] || "Unknown item.";
+}
+
+function openItemInfo(item) {
+  $("itemInfoTitle").textContent = itemLabel(item);
+  $("itemInfoText").textContent = itemDescription(item);
+  $("itemInfoPanel").classList.remove("hidden");
+}
+
 function stopNfcOperation() {
   if (nfcAbort) {
     nfcAbort.abort();
@@ -437,8 +457,7 @@ function render() {
 
   $("inventory").innerHTML = items.map((name, i) => {
     const count = me ? me.inv[i] : 0;
-    const disabled = !isMyTurn || jammed || count <= 0 ? " disabled" : "";
-    return `<button type="button"${disabled} onclick="useItem('${name}')">${itemLabel(name)} <small>${count}</small></button>`;
+    return `<button type="button" onclick="openItemInfo('${name}')">${itemLabel(name)} <small>${count}</small></button>`;
   }).join("");
   const pendingScans = me ? Number(me.pending_scans) || 0 : 0;
   $("scan").textContent = pendingScans > 0 ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"}` : "No item scans";
@@ -710,6 +729,7 @@ $("closeTarget").onclick = () => {
 };
 $("debugToggle").onclick = () => $("debugPanel").classList.toggle("hidden");
 $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
+$("closeItemInfo").onclick = () => $("itemInfoPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
 $("scanRequired").onclick = scanNfc;
 

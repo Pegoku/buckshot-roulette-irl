@@ -1523,22 +1523,8 @@ static void decrement_item(player_t *p, item_t item)
     }
 }
 
-static const char *apply_item_locked(player_t *p, item_t item, int target, item_t steal_item)
+static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
 {
-    player_t *t = player_by_id(target);
-    if (game.phase != PHASE_ACTIVE || !p || !p->alive || game.current != p->id || item == ITEM_INVALID || p->inv[item] == 0) {
-        return "bad item";
-    }
-    if (p->nfc_use_block_until_ms && (int32_t)(p->nfc_use_block_until_ms - now_ms()) > 0) {
-        return "items locked briefly";
-    }
-    if ((item == ITEM_JAMMER || item == ITEM_ADRENALINE) && (!t || !t->alive || t->id == p->id)) {
-        return "select target";
-    }
-    if (item == ITEM_ADRENALINE && (steal_item <= ITEM_ADRENALINE || steal_item == ITEM_INVALID || t->inv[steal_item] == 0)) {
-        return "select item";
-    }
-    decrement_item(p, item);
     switch (item) {
     case ITEM_BEER:
         if (game.shell_index < game.shell_count) {
@@ -1575,8 +1561,10 @@ static const char *apply_item_locked(player_t *p, item_t item, int target, item_
         set_message("Current shell inverted");
         break;
     case ITEM_JAMMER:
-        t->skip_turn = true;
-        set_message("%s jammed %s", p->name, t->name);
+        if (t) {
+            t->skip_turn = true;
+            set_message("%s jammed %s", p->name, t->name);
+        }
         break;
     case ITEM_GLASS:
         if (game.shell_index < game.shell_count) {
@@ -1594,15 +1582,32 @@ static const char *apply_item_locked(player_t *p, item_t item, int target, item_
             set_message("Remote did nothing");
         }
         break;
-    case ITEM_ADRENALINE:
-        t->inv[steal_item]--;
-        if (inventory_count(p) < MAX_PLAYER_ITEMS) {
-            p->inv[steal_item]++;
-        }
-        set_message("%s stole %s", p->name, item_names[steal_item]);
-        break;
     default:
         break;
+    }
+}
+
+static const char *apply_item_locked(player_t *p, item_t item, int target, item_t steal_item)
+{
+    player_t *t = player_by_id(target);
+    if (game.phase != PHASE_ACTIVE || !p || !p->alive || game.current != p->id || item == ITEM_INVALID || p->inv[item] == 0) {
+        return "bad item";
+    }
+    if (p->nfc_use_block_until_ms && (int32_t)(p->nfc_use_block_until_ms - now_ms()) > 0) {
+        return "items locked briefly";
+    }
+    if ((item == ITEM_JAMMER || item == ITEM_ADRENALINE) && (!t || !t->alive || t->id == p->id)) {
+        return "select target";
+    }
+    if (item == ITEM_ADRENALINE && (steal_item <= ITEM_ADRENALINE || steal_item == ITEM_INVALID || t->inv[steal_item] == 0)) {
+        return "select item";
+    }
+    decrement_item(p, item);
+    if (item == ITEM_ADRENALINE) {
+        decrement_item(t, steal_item);
+        apply_item_effect_locked(p, steal_item, t);
+    } else {
+        apply_item_effect_locked(p, item, t);
     }
     return NULL;
 }
