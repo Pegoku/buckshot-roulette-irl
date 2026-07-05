@@ -137,6 +137,7 @@ typedef struct {
     uint32_t last_shot_ms;
     bool last_shot_live;
     bool last_shot_valid;
+    uint8_t last_shot_fx_variant;
     uint32_t reveal_shell_until_ms;
     bool reveal_shell_live;
     bool reveal_shell_valid;
@@ -531,6 +532,26 @@ static void tft_shell_sprite(lv_obj_t *parent, bool live, int x, int y, uint16_t
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
 }
 
+static void tft_shot_fx_sprite(lv_obj_t *parent, bool live, uint8_t variant, uint32_t elapsed_ms, int x, int y)
+{
+    const lv_img_dsc_t *const *frames = tft_smoke_frames;
+    uint8_t count = TFT_SMOKE_FRAME_COUNT;
+    if (live) {
+        frames = (variant & 1) ? tft_explosion2_frames : tft_explosion1_frames;
+        count = TFT_EXPLOSION_FRAME_COUNT;
+    }
+    uint32_t frame = (elapsed_ms * count) / (TFT_SHOT_ANIM_MS - TFT_SHOT_BULLET_MS);
+    if (frame >= count) {
+        frame = count - 1;
+    }
+    lv_obj_t *img = lv_img_create(parent);
+    lv_img_set_src(img, frames[frame]);
+    lv_obj_set_pos(img, x, y);
+    lv_img_set_zoom(img, live ? 384 : 340);
+    lv_img_set_pivot(img, 32, 32);
+    lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+}
+
 static void lcd_draw_token_qr_hint(void)
 {
     for (int i = 0; i < 16; i++) {
@@ -712,14 +733,7 @@ static void lcd_draw_game_screen(void)
             tft_shell_sprite(root, snap.last_shot_live, x, y, squash, angle, LV_OPA_COVER);
         } else {
             uint32_t smoke_elapsed = elapsed - TFT_SHOT_BULLET_MS;
-            uint16_t burst = 80 + (smoke_elapsed > 280 ? 280 : smoke_elapsed);
-            lv_obj_t *smoke = lv_obj_create(root);
-            lv_obj_remove_style_all(smoke);
-            lv_obj_set_pos(smoke, 92 - (int)(burst / 8) + shake, 90 - (int)(burst / 12));
-            lv_obj_set_size(smoke, 116 + burst / 3, 46 + burst / 5);
-            lv_obj_set_style_radius(smoke, LV_RADIUS_CIRCLE, 0);
-            lv_obj_set_style_bg_color(smoke, snap.last_shot_live ? lv_color_hex(0xe13d2f) : lv_color_hex(0xd8e6d6), 0);
-            lv_obj_set_style_bg_opa(smoke, smoke_elapsed < 260 ? LV_OPA_50 : LV_OPA_30, 0);
+            tft_shot_fx_sprite(root, snap.last_shot_live, snap.last_shot_fx_variant, smoke_elapsed, 40 + shake, 32 - (shake / 2));
             const char *label = snap.last_shot_live ? "BANG" : "PUFF";
             tft_label(root, label, 116 + shake, 132, snap.last_shot_live ? lv_color_hex(0xff4a3d) : lv_color_hex(0xd8e6d6), 2);
         }
@@ -1098,6 +1112,7 @@ static void resolve_shot(void)
     game.last_shot_live = live;
     game.last_shot_valid = true;
     game.last_shot_ms = now_ms();
+    game.last_shot_fx_variant = live ? (esp_random() & 1) : 0;
     uint8_t damage = game.saw_active && live ? 2 : 1;
     bool keep_turn = !live && target->id == shooter->id;
 
@@ -1151,6 +1166,7 @@ static void game_reset(void)
     game.round_started_ms = 0;
     game.last_shot_valid = false;
     game.last_shot_ms = 0;
+    game.last_shot_fx_variant = 0;
     game.reveal_shell_valid = false;
     game.reveal_shell_until_ms = 0;
     set_message("Join from QR URL");
