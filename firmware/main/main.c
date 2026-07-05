@@ -542,15 +542,15 @@ static void lcd_draw_token_qr_hint(void)
 static void lcd_draw_qr_callback(esp_qrcode_handle_t qrcode)
 {
     int qr_size = esp_qrcode_get_size(qrcode);
-    int module = 5;
+    int module = 4;
     int quiet = 4;
     int total = (qr_size + quiet * 2) * module;
-    if (total > 190) {
-        module = 4;
+    if (total > 184) {
+        module = 3;
         total = (qr_size + quiet * 2) * module;
     }
     int x0 = (LCD_WIDTH - total) / 2;
-    int y0 = 42;
+    int y0 = 56;
     lcd_fill_rect(x0, y0, total, total, COLOR_WHITE);
     for (int y = 0; y < qr_size; y++) {
         for (int x = 0; x < qr_size; x++) {
