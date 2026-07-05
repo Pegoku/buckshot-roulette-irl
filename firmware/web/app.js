@@ -323,8 +323,8 @@ function makeDemoState() {
     pending_scan_total: 4,
     message: "terminal link unstable",
     players: [
-      {id: 0, name: "Operator", lives: 3, alive: true, jammed: false, admin: false, pending_scans: 2, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
-      {id: 1, name: "Dealer", lives: 3, alive: true, jammed: false, admin: false, pending_scans: 2, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
+      {id: 0, name: "Operator", color: "pink", lives: 3, alive: true, jammed: false, admin: false, pending_scans: 2, inv: [0, 1, 0, 1, 0, 0, 0, 1, 0]},
+      {id: 1, name: "Dealer", color: "blue", lives: 3, alive: true, jammed: false, admin: false, pending_scans: 2, inv: [0, 0, 0, 0, 0, 0, 0, 0, 0]}
     ]
   };
 }
@@ -360,6 +360,19 @@ function lifeMeter(lives, maxLives = 3) {
     const shine = i < alive ? `<img class="koi-shine" src="${src}" alt="" aria-hidden="true">` : "";
     return `<span class="life-cell${filled}"><img class="koi-base" src="${src}" alt="${alt}">${shine}</span>`;
   }).join("");
+}
+
+function playerPortraitSrc(player) {
+  const color = ["pink", "blue", "green", "yellow"].includes(player && player.color) ? player.color : "green";
+  let frame = 4;
+  if (player && player.alive && Number(player.lives) >= 3) {
+    frame = 1;
+  } else if (player && player.alive && Number(player.lives) === 2) {
+    frame = 2;
+  } else if (player && player.alive && Number(player.lives) === 1) {
+    frame = 3;
+  }
+  return `/images/soups/soup-${color}-${frame}.png`;
 }
 
 function playerBySlot(slot) {
@@ -449,7 +462,9 @@ function render() {
     const active = player && selectedTarget === player.id ? " active" : "";
     const disabled = online ? "" : " disabled";
     const status = online ? escapeHtml(player.name) : "X";
+    const avatar = player ? `<img class="target-avatar" src="${playerPortraitSrc(player)}" alt="">` : "<span class='target-avatar empty'></span>";
     return `<button class="target-box target-${pos}${active}"${disabled} onclick="chooseSlot(${slot})">
+      ${avatar}
       <span>${label}</span>
       <small>${status}</small>
     </button>`;

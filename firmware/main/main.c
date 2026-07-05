@@ -51,6 +51,7 @@
 #define MAX_ITEMS 9
 #define MAX_TOKENS 40
 #define MAX_PLAYER_ITEMS 8
+#define PLAYER_COLOR_COUNT 4
 #define BUTTON_POLL_DELAY_TICKS 1
 #define PLAYER_TIMEOUT_MS 20000
 #define PLAYER_TIMEOUT_RETRY_MS 2000
@@ -95,6 +96,7 @@ typedef struct {
     bool alive;
     bool skip_turn;
     uint8_t id;
+    uint8_t color;
     uint8_t lives;
     uint8_t timeout_strikes;
     uint32_t join_order;
@@ -181,6 +183,13 @@ static const uint8_t digit_font[10][5] = {
     {0x7, 0x1, 0x1, 0x2, 0x2},
     {0x7, 0x5, 0x7, 0x5, 0x7},
     {0x7, 0x5, 0x7, 0x1, 0x7},
+};
+
+static const char *player_color_names[PLAYER_COLOR_COUNT] = {
+    "pink",
+    "blue",
+    "green",
+    "yellow",
 };
 
 static const char *item_names[MAX_ITEMS] = {
@@ -534,6 +543,44 @@ static void tft_shell_sprite(lv_obj_t *parent, bool live, int x, int y, uint16_t
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
 }
 
+static lv_color_t tft_player_color(uint8_t color)
+{
+    switch (color % PLAYER_COLOR_COUNT) {
+    case 0:
+        return lv_color_hex(0xff5ab7);
+    case 1:
+        return lv_color_hex(0x4aa8ff);
+    case 2:
+        return lv_color_hex(0x00ff66);
+    default:
+        return lv_color_hex(0xffd447);
+    }
+}
+
+static uint8_t tft_soup_life_frame(const player_t *p)
+{
+    if (!p->alive || p->lives == 0) {
+        return 3;
+    }
+    if (p->lives >= 3) {
+        return 0;
+    }
+    if (p->lives == 2) {
+        return 1;
+    }
+    return 2;
+}
+
+static void tft_soup_sprite(lv_obj_t *parent, const player_t *p, int x, int y, bool current)
+{
+    lv_obj_t *frame = tft_panel(parent, x - 2, y - 2, 48, 48, current ? lv_color_hex(0xffffff) : tft_player_color(p->color), current ? LV_OPA_30 : LV_OPA_20);
+    lv_obj_set_style_radius(frame, 0, 0);
+    lv_obj_t *img = lv_img_create(parent);
+    lv_img_set_src(img, tft_soup_portraits[p->color % PLAYER_COLOR_COUNT][tft_soup_life_frame(p)]);
+    lv_obj_set_pos(img, x, y);
+    lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+}
+
 static void tft_shot_fx_sprite(lv_obj_t *parent, bool live, uint8_t variant, uint32_t elapsed_ms, int x, int y)
 {
     const lv_img_dsc_t *const *frames = tft_smoke_frames;
@@ -651,28 +698,30 @@ static void lcd_draw_game_screen(void)
         }
         int y = 56 + visible * 29;
         bool current = i == snap.current && snap.phase == PHASE_ACTIVE;
-        lv_color_t border = current ? lv_color_hex(0xffd447) : (snap.players[i].alive ? lv_color_hex(0x00ff66) : lv_color_hex(0x31523d));
-        lv_obj_t *row = tft_panel(root, 18, y, 284, 22, border, current ? LV_OPA_30 : LV_OPA_20);
+        lv_color_t color = tft_player_color(snap.players[i].color);
+        lv_color_t border = current ? lv_color_hex(0xffd447) : (snap.players[i].alive ? color : lv_color_hex(0x31523d));
+        lv_obj_t *row = tft_panel(root, 18, y, 230, 22, border, current ? LV_OPA_30 : LV_OPA_20);
         char line[64];
         snprintf(line, sizeof(line), "P%u %-15s", i + 1, snap.players[i].name);
-        tft_label(row, line, 6, 6, snap.players[i].alive ? lv_color_hex(0x00ff66) : lv_color_hex(0x6a7f70), 1);
+        tft_label(row, line, 6, 6, snap.players[i].alive ? color : lv_color_hex(0x6a7f70), 1);
         for (int life = 0; life < snap.max_lives && life < 9; life++) {
             lv_obj_t *pip = lv_obj_create(row);
             lv_obj_remove_style_all(pip);
-            lv_obj_set_pos(pip, 204 + life * 8, 6);
+            lv_obj_set_pos(pip, 154 + life * 8, 6);
             lv_obj_set_size(pip, 5, 10);
-            lv_obj_set_style_bg_color(pip, life < snap.players[i].lives ? lv_color_hex(0x00ff66) : lv_color_hex(0x203326), 0);
+            lv_obj_set_style_bg_color(pip, life < snap.players[i].lives ? color : lv_color_hex(0x203326), 0);
             lv_obj_set_style_bg_opa(pip, LV_OPA_COVER, 0);
         }
+        tft_soup_sprite(root, &snap.players[i], 264, 50 + visible * 46, current);
         visible++;
     }
 
     uint32_t shot_elapsed = snap.last_shot_valid ? (uint32_t)(now - snap.last_shot_ms) : UINT32_MAX;
     bool shot_anim_active = snap.last_shot_valid && shot_elapsed < TFT_SHOT_ANIM_MS;
-    lv_obj_t *rail = tft_panel(root, 18, 184, 284, 34, lv_color_hex(0x00ff66), LV_OPA_20);
+    lv_obj_t *rail = tft_panel(root, 18, 184, 230, 34, lv_color_hex(0x00ff66), LV_OPA_20);
     int rail_slot = 0;
     if (shot_anim_active) {
-        tft_shell_sprite(rail, snap.last_shot_live, 252, 1, 128, 0, LV_OPA_COVER);
+        tft_shell_sprite(rail, snap.last_shot_live, 198, 1, 128, 0, LV_OPA_COVER);
         rail_slot = 1;
     }
     uint8_t rail_live = snap_live_remaining(&snap);
@@ -681,14 +730,14 @@ static void lcd_draw_game_screen(void)
         if (rail_slot >= MAX_SHELLS) {
             break;
         }
-        tft_shell_sprite(rail, false, 252 - rail_slot * 29, 1, 128, 0, LV_OPA_COVER);
+        tft_shell_sprite(rail, false, 198 - rail_slot * 25, 1, 128, 0, LV_OPA_COVER);
         rail_slot++;
     }
     for (int i = 0; i < rail_live; i++) {
         if (rail_slot >= MAX_SHELLS) {
             break;
         }
-        tft_shell_sprite(rail, true, 252 - rail_slot * 29, 1, 128, 0, LV_OPA_COVER);
+        tft_shell_sprite(rail, true, 198 - rail_slot * 25, 1, 128, 0, LV_OPA_COVER);
         rail_slot++;
     }
 
@@ -839,6 +888,27 @@ static player_t *player_by_id(uint8_t id)
         return NULL;
     }
     return &game.players[id];
+}
+
+static uint8_t assign_player_color_locked(void)
+{
+    bool used[PLAYER_COLOR_COUNT] = {0};
+    for (int i = 0; i < MAX_PLAYERS; i++) {
+        if (game.players[i].active && game.players[i].color < PLAYER_COLOR_COUNT) {
+            used[game.players[i].color] = true;
+        }
+    }
+    uint8_t available[PLAYER_COLOR_COUNT];
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < PLAYER_COLOR_COUNT; i++) {
+        if (!used[i]) {
+            available[count++] = i;
+        }
+    }
+    if (count == 0) {
+        return 0;
+    }
+    return available[esp_random() % count];
 }
 
 static void recompute_admin_locked(void)
@@ -1344,8 +1414,8 @@ static esp_err_t api_state(httpd_req_t *req)
             continue;
         }
         player_t *p = &game.players[i];
-        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"lives\":%u,\"alive\":%s,\"jammed\":%s,\"admin\":%s,\"pending_scans\":%u,\"inv\":[",
-                      first_player ? "" : ",", p->id, p->name, p->lives, p->alive ? "true" : "false",
+        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"color\":\"%s\",\"lives\":%u,\"alive\":%s,\"jammed\":%s,\"admin\":%s,\"pending_scans\":%u,\"inv\":[",
+                      first_player ? "" : ",", p->id, p->name, player_color_names[p->color % PLAYER_COLOR_COUNT], p->lives, p->alive ? "true" : "false",
                       p->skip_turn ? "true" : "false", p->id == game.admin_id ? "true" : "false", p->pending_item_scans);
         first_player = false;
         for (int item = 0; item < MAX_ITEMS; item++) {
@@ -1395,6 +1465,7 @@ static esp_err_t api_register(httpd_req_t *req)
     p->active = true;
     p->alive = true;
     p->id = id;
+    p->color = assign_player_color_locked();
     p->lives = game.max_lives;
     p->join_order = game.next_join_order++;
     p->last_seen_ms = now_ms();

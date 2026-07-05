@@ -465,16 +465,30 @@ h2 {
 
 .target-grid {
   grid-template-columns: repeat(3, minmax(120px, 1fr));
-  grid-template-rows: repeat(3, minmax(72px, auto));
+  grid-template-rows: repeat(3, minmax(92px, auto));
   align-items: stretch;
 }
 
 .target-grid button {
-  min-height: 72px;
+  min-height: 92px;
   display: grid;
   align-content: center;
+  justify-items: center;
   gap: 6px;
   font-size: 13px;
+}
+
+.target-avatar {
+  width: 42px;
+  height: 42px;
+  image-rendering: pixelated;
+  object-fit: contain;
+}
+
+.target-avatar.empty {
+  display: block;
+  border: 1px solid var(--line-dim);
+  opacity: .35;
 }
 
 .target-top {
