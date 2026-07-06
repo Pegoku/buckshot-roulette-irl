@@ -58,6 +58,10 @@
 #define PLAYER_TIMEOUT_RETRIES 3
 #define TFT_SHOT_ANIM_MS 1600
 #define TFT_SHOT_BULLET_MS 450
+#define BEER_EJECT_ANIM_MS 900
+#define PHONE_SHOT_DELAY_MS 220
+#define TFT_RELOAD_AFTER_LAST_SHOT_DELAY_MS 1700
+#define TFT_RELOAD_AFTER_BEER_EJECT_DELAY_MS 700
 #define TFT_ROUND_REVEAL_MS 5200
 #define TFT_ROUND_REVEAL_DELAY_MS 4200
 
@@ -140,12 +144,19 @@ typedef struct {
     uint32_t phase_started_ms;
     uint32_t round_started_ms;
     uint32_t last_shot_ms;
+    uint32_t shot_seq;
+    int8_t last_shot_shooter;
     bool last_shot_live;
     bool last_shot_valid;
     uint8_t last_shot_fx_variant;
+    uint32_t beer_eject_ms;
+    uint32_t beer_eject_seq;
+    bool beer_eject_live;
     uint32_t reveal_shell_until_ms;
     bool reveal_shell_live;
     bool reveal_shell_valid;
+    uint8_t reveal_shell_number;
+    char reveal_shell_source[12];
     char message[96];
     player_t players[MAX_PLAYERS];
     token_t tokens[MAX_TOKENS];
@@ -563,6 +574,26 @@ static void tft_shell_sprite(lv_obj_t *parent, bool live, int x, int y, uint16_t
     lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
 }
 
+static void tft_shell_sprite_center(lv_obj_t *parent, bool live, int x_ofs, int y_ofs, uint16_t zoom, int16_t angle, lv_opa_t opa)
+{
+    lv_obj_t *img = lv_img_create(parent);
+    lv_img_set_src(img, live ? &tft_bullet_live : &tft_bullet_blank);
+    lv_img_set_zoom(img, zoom);
+    lv_img_set_pivot(img, 16, 32);
+    lv_img_set_angle(img, angle);
+    lv_obj_set_style_img_opa(img, opa, 0);
+    lv_obj_align(img, LV_ALIGN_CENTER, x_ofs, y_ofs);
+    lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+}
+
+static void tft_end_screen_image(lv_obj_t *parent)
+{
+    lv_obj_t *img = lv_img_create(parent);
+    lv_img_set_src(img, &tft_end_screen);
+    lv_obj_set_pos(img, 0, 0);
+    lv_obj_clear_flag(img, LV_OBJ_FLAG_SCROLLABLE);
+}
+
 static lv_color_t tft_player_color(uint8_t color)
 {
     switch (color % PLAYER_COLOR_COUNT) {
@@ -609,7 +640,9 @@ static void tft_shot_fx_sprite(lv_obj_t *parent, bool live, uint8_t variant, uin
         frames = (variant & 1) ? tft_explosion2_frames : tft_explosion1_frames;
         count = TFT_EXPLOSION_FRAME_COUNT;
     }
-    uint32_t frame = (elapsed_ms * count) / (TFT_SHOT_ANIM_MS - TFT_SHOT_BULLET_MS);
+    uint8_t first_frame = live && count > 1 ? 1 : 0;
+    uint8_t usable_count = count - first_frame;
+    uint32_t frame = first_frame + (elapsed_ms * usable_count) / (TFT_SHOT_ANIM_MS - TFT_SHOT_BULLET_MS);
     if (frame >= count) {
         frame = count - 1;
     }
@@ -803,6 +836,8 @@ static void lcd_draw_game_screen(void)
 
     uint32_t shot_elapsed = snap.last_shot_valid ? (uint32_t)(now - snap.last_shot_ms) : UINT32_MAX;
     bool shot_anim_active = snap.last_shot_valid && shot_elapsed < TFT_SHOT_ANIM_MS;
+    uint32_t beer_eject_elapsed = snap.beer_eject_seq ? (uint32_t)(now - snap.beer_eject_ms) : UINT32_MAX;
+    bool beer_eject_active = snap.beer_eject_seq && beer_eject_elapsed < BEER_EJECT_ANIM_MS;
 
     uint32_t round_intro_elapsed = 0;
     if (snap.phase == PHASE_ACTIVE && elapsed_window(now, snap.round_started_ms, TFT_ROUND_REVEAL_MS, &round_intro_elapsed)) {
@@ -822,11 +857,31 @@ static void lcd_draw_game_screen(void)
     }
 
     if (snap.reveal_shell_valid && (int32_t)(snap.reveal_shell_until_ms - now) > 0) {
-        lv_obj_t *reveal = tft_panel(root, 78, 76, 164, 88, snap.reveal_shell_live ? lv_color_hex(0xe13d2f) : lv_color_hex(0xd8e6d6), LV_OPA_70);
-        tft_label(reveal, "MAGNIFIER", 32, 12, lv_color_hex(0x00ff66), 1);
-        tft_shell_sprite(reveal, snap.reveal_shell_live, 66, 28, 160, 0, LV_OPA_COVER);
-        tft_label(reveal, snap.reveal_shell_live ? "LIVE" : "BLANK", 58, 66,
+        lv_obj_t *reveal = tft_panel(root, 70, 68, 180, 106, snap.reveal_shell_live ? lv_color_hex(0xe13d2f) : lv_color_hex(0xd8e6d6), LV_OPA_70);
+        tft_label(reveal, snap.reveal_shell_source[0] ? snap.reveal_shell_source : "SHELL", 12, 12, lv_color_hex(0x00ff66), 1);
+        char shell_no[16];
+        snprintf(shell_no, sizeof(shell_no), "#%u", snap.reveal_shell_number);
+        tft_label(reveal, shell_no, 132, 12, lv_color_hex(0xffd447), 1);
+        tft_shell_sprite_center(reveal, snap.reveal_shell_live, 0, 2, 176, 0, LV_OPA_COVER);
+        tft_label(reveal, snap.reveal_shell_live ? "LIVE" : "BLANK", snap.reveal_shell_live ? 66 : 58, 82,
                   snap.reveal_shell_live ? lv_color_hex(0xff4a3d) : lv_color_hex(0xd8e6d6), 1);
+    }
+
+    if (beer_eject_active) {
+        int p = (int)((beer_eject_elapsed * 1000) / BEER_EJECT_ANIM_MS);
+        if (p > 1000) {
+            p = 1000;
+        }
+        int x = 232 - (82 * p) / 1000;
+        int y = 94 + (96 * p) / 1000 - (58 * p * (1000 - p)) / 250000;
+        int16_t angle = 900 + (int16_t)((1700 * p) / 1000);
+        lv_obj_t *trail = lv_obj_create(root);
+        lv_obj_remove_style_all(trail);
+        lv_obj_set_pos(trail, x + 12, y + 26);
+        lv_obj_set_size(trail, 22, 2);
+        lv_obj_set_style_bg_color(trail, lv_color_hex(0xffd447), 0);
+        lv_obj_set_style_bg_opa(trail, 120, 0);
+        tft_shell_sprite(root, snap.beer_eject_live, x, y, 176, angle, LV_OPA_COVER);
     }
 
     if (shot_anim_active) {
@@ -856,17 +911,8 @@ static void lcd_draw_game_screen(void)
         }
     }
 
-    if (snap.phase == PHASE_GAME_OVER && snap.winner >= 0 && snap.winner < MAX_PLAYERS) {
-        lv_obj_t *shade = lv_obj_create(root);
-        lv_obj_remove_style_all(shade);
-        lv_obj_set_pos(shade, 0, 0);
-        lv_obj_set_size(shade, LCD_WIDTH, LCD_HEIGHT);
-        lv_obj_set_style_bg_color(shade, lv_color_hex(0x020604), 0);
-        lv_obj_set_style_bg_opa(shade, LV_OPA_70, 0);
-        char won[64];
-        snprintf(won, sizeof(won), "%s WON", snap.players[snap.winner].name);
-        tft_label(root, won, 36, 92, lv_color_hex(0xffd447), 1);
-        tft_label(root, "THE GAMBLE", 68, 118, lv_color_hex(0x00ff66), 2);
+    if (snap.phase == PHASE_GAME_OVER && snap.winner >= 0 && snap.winner < MAX_PLAYERS && !shot_anim_active) {
+        tft_end_screen_image(root);
     }
     tft_render_now();
 }
@@ -1237,15 +1283,20 @@ static void reload_if_needed(void)
         game.round++;
         uint32_t start = now_ms();
         if (game.last_shot_valid) {
-            uint32_t shot_end = game.last_shot_ms + TFT_SHOT_ANIM_MS + 120;
+            uint32_t shot_end = game.last_shot_ms + TFT_SHOT_ANIM_MS + TFT_RELOAD_AFTER_LAST_SHOT_DELAY_MS;
             if ((int32_t)(shot_end - start) > 0) {
                 start = shot_end;
             }
         }
+        if (game.beer_eject_seq) {
+            uint32_t eject_end = game.beer_eject_ms + BEER_EJECT_ANIM_MS + TFT_RELOAD_AFTER_BEER_EJECT_DELAY_MS;
+            if ((int32_t)(eject_end - start) > 0) {
+                start = eject_end;
+            }
+        }
         game.round_started_ms = start;
         shuffle_shells();
-        request_item_scans();
-        set_message("New load: scan %u item tags", pending_scan_total());
+        set_message("Shotgun refilled");
     }
 }
 
@@ -1278,6 +1329,8 @@ static void resolve_shot(void)
     game.last_shot_live = live;
     game.last_shot_valid = true;
     game.last_shot_ms = now_ms();
+    game.shot_seq++;
+    game.last_shot_shooter = shooter->id;
     game.last_shot_fx_variant = live ? (esp_random() & 1) : 0;
     uint8_t damage = game.saw_active && live ? 2 : 1;
     bool keep_turn = !live && target->id == shooter->id;
@@ -1332,9 +1385,16 @@ static void game_reset(void)
     game.round_started_ms = 0;
     game.last_shot_valid = false;
     game.last_shot_ms = 0;
+    game.shot_seq = 0;
+    game.last_shot_shooter = -1;
     game.last_shot_fx_variant = 0;
+    game.beer_eject_ms = 0;
+    game.beer_eject_seq = 0;
+    game.beer_eject_live = false;
     game.reveal_shell_valid = false;
     game.reveal_shell_until_ms = 0;
+    game.reveal_shell_number = 0;
+    game.reveal_shell_source[0] = '\0';
     set_message("Join from QR URL");
 }
 
@@ -1468,7 +1528,7 @@ static bool valid_join_path(const char *path)
 
 static esp_err_t api_state(httpd_req_t *req)
 {
-    char json[2300];
+    char json[3000];
     char *w = json;
     char *end = json + sizeof(json);
     int pid = query_int(req, "pid", -1);
@@ -1478,13 +1538,23 @@ static esp_err_t api_state(httpd_req_t *req)
     uint8_t live = live_remaining();
     uint8_t blank = game.shell_count - game.shell_index - live;
     uint8_t pending_total = pending_scan_total();
+    uint32_t round_intro_elapsed = 0;
+    uint32_t server_ms = now_ms();
+    bool round_intro_active = game.phase == PHASE_ACTIVE && elapsed_window(server_ms, game.round_started_ms, TFT_ROUND_REVEAL_MS, &round_intro_elapsed);
     w += snprintf(w, end - w,
-                  "{\"ok\":true,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
+                  "{\"ok\":true,\"millis\":%lu,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
                   "\"you\":%s,\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
-                  "\"live_remaining\":%u,\"blank_remaining\":%u,\"pending_scan_total\":%u,\"armed_target\":%d,",
-                  ap_ssid, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
+                  "\"live_remaining\":%u,\"blank_remaining\":%u,\"pending_scan_total\":%u,\"round\":%u,\"round_intro_active\":%s,\"round_intro_elapsed_ms\":%lu,\"round_intro_duration_ms\":%u,"
+                  "\"shot_seq\":%lu,\"last_shot_ms\":%lu,\"last_shot_live\":%s,\"last_shot_shooter\":%d,\"shot_phone_delay_ms\":%u,"
+                  "\"beer_eject_seq\":%lu,\"beer_eject_ms\":%lu,\"beer_eject_live\":%s,\"beer_eject_duration_ms\":%u,\"armed_target\":%d,",
+                  (unsigned long)server_ms, ap_ssid, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
                   game.admin_id, game.player_count, game.current, game.winner,
-                  game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, pending_total, game.armed_target);
+                  game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, pending_total,
+                  game.round, round_intro_active ? "true" : "false", (unsigned long)round_intro_elapsed, TFT_ROUND_REVEAL_MS,
+                  (unsigned long)game.shot_seq, (unsigned long)game.last_shot_ms, game.last_shot_live ? "true" : "false",
+                  game.last_shot_shooter, PHONE_SHOT_DELAY_MS,
+                  (unsigned long)game.beer_eject_seq, (unsigned long)game.beer_eject_ms, game.beer_eject_live ? "true" : "false",
+                  BEER_EJECT_ANIM_MS, game.armed_target);
     if (game.armed_target >= 0 && game.armed_target < MAX_PLAYERS && game.players[game.armed_target].active) {
         w += snprintf(w, end - w, "\"armed_target_name\":\"%s\",", game.players[game.armed_target].name);
     } else {
@@ -1617,6 +1687,16 @@ static esp_err_t api_start(httpd_req_t *req)
     game.phase_started_ms = now_ms();
     game.round_started_ms = game.phase_started_ms;
     game.last_shot_valid = false;
+    game.last_shot_ms = 0;
+    game.shot_seq = 0;
+    game.last_shot_shooter = -1;
+    game.beer_eject_ms = 0;
+    game.beer_eject_seq = 0;
+    game.beer_eject_live = false;
+    game.reveal_shell_valid = false;
+    game.reveal_shell_until_ms = 0;
+    game.reveal_shell_number = 0;
+    game.reveal_shell_source[0] = '\0';
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (game.players[i].active) {
             game.players[i].alive = true;
@@ -1716,6 +1796,9 @@ static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
     case ITEM_BEER:
         if (game.shell_index < game.shell_count) {
             bool live = game.shells[game.shell_index++] != 0;
+            game.beer_eject_live = live;
+            game.beer_eject_ms = now_ms();
+            game.beer_eject_seq++;
             set_message("Beer ejected a %s", live ? "live" : "blank");
             if (game.shell_index >= game.shell_count) {
                 reload_if_needed();
@@ -1726,6 +1809,11 @@ static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
     case ITEM_BURNER:
         if (game.shell_count - game.shell_index > 2) {
             int idx = game.shell_index + 1 + (esp_random() % (game.shell_count - game.shell_index - 1));
+            game.reveal_shell_live = game.shells[idx] != 0;
+            game.reveal_shell_valid = true;
+            game.reveal_shell_until_ms = now_ms() + 3500;
+            game.reveal_shell_number = idx + 1;
+            strlcpy(game.reveal_shell_source, "BURNER", sizeof(game.reveal_shell_source));
             set_message("Burner: shell %d is %s", idx + 1, game.shells[idx] ? "live" : "blank");
         } else {
             set_message("Burner: how unfortunate");
@@ -1758,6 +1846,8 @@ static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
             game.reveal_shell_live = game.shells[game.shell_index] != 0;
             game.reveal_shell_valid = true;
             game.reveal_shell_until_ms = now_ms() + 3500;
+            game.reveal_shell_number = game.shell_index + 1;
+            strlcpy(game.reveal_shell_source, "MAGNIFIER", sizeof(game.reveal_shell_source));
             set_message("%s used magnifier", p->name);
         }
         break;
@@ -2067,6 +2157,9 @@ static const char *content_type_for(const char *path)
     if (strcmp(ext, ".png") == 0) {
         return "image/png";
     }
+    if (strcmp(ext, ".mp3") == 0) {
+        return "audio/mpeg";
+    }
     return "application/octet-stream";
 }
 
@@ -2178,6 +2271,7 @@ static void register_routes(httpd_handle_t server)
     register_get(server, "/manifest.webmanifest", static_handler);
     register_get(server, "/fonts/*", static_handler);
     register_get(server, "/images/*", static_handler);
+    register_get(server, "/audio/*", static_handler);
     register_get(server, "/api/state", api_state);
     register_post(server, "/api/register", api_register);
     register_post(server, "/api/setup", api_setup);
@@ -2344,6 +2438,7 @@ static void display_task(void *arg)
             animate = (uint32_t)(now - game.phase_started_ms) < 4200 ||
                       elapsed_window(now, game.round_started_ms, TFT_ROUND_REVEAL_MS, &round_elapsed) ||
                       animate ||
+                      (game.beer_eject_seq && (uint32_t)(now - game.beer_eject_ms) < BEER_EJECT_ANIM_MS) ||
                       (game.reveal_shell_valid && (int32_t)(game.reveal_shell_until_ms - now) > 0);
         }
         unlock_game();

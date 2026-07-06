@@ -35,6 +35,26 @@
     </section>
   </main>
 
+  <div id="roundLoadPanel" class="round-load hidden" aria-hidden="true">
+    <div class="round-load-card">
+      <p id="roundLoadTitle">Round</p>
+      <div id="roundLoadShells" class="round-load-shells"></div>
+    </div>
+  </div>
+
+  <div id="beerEjectPanel" class="beer-eject hidden" aria-hidden="true">
+    <img id="beerEjectShell" src="/images/bullets/blank.png" alt="">
+  </div>
+
+  <div id="endScreenPanel" class="end-screen hidden" role="dialog" aria-modal="true" aria-labelledby="endTitle">
+    <div class="end-card">
+      <p class="kicker">final result</p>
+      <h2 id="endTitle">Winner</h2>
+      <p id="endText" class="message"></p>
+      <button id="endStart" class="scan-button hidden" type="button">Play new round</button>
+    </div>
+  </div>
+
   <div id="targetDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="targetTitle">
     <div class="popup-card">
       <div class="popup-head">

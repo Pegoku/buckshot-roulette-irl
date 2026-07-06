@@ -4,6 +4,7 @@
 
 LV_IMG_DECLARE(tft_bullet_live);
 LV_IMG_DECLARE(tft_bullet_blank);
+LV_IMG_DECLARE(tft_end_screen);
 extern const lv_img_dsc_t *const tft_soup_portraits[4][4];
 #define TFT_EXPLOSION_FRAME_COUNT 20
 #define TFT_SMOKE_FRAME_COUNT 22

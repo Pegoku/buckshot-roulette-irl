@@ -3,6 +3,7 @@ idf_component_register(
         "main.c"
         "assets/tft_sprites.c"
         "assets/soup_sprites.c"
+        "assets/end_screen.c"
     INCLUDE_DIRS "."
     EMBED_TXTFILES
         "../certs/server.crt"

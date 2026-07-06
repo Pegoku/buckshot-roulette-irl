@@ -20,6 +20,17 @@ let adrenalineTarget = -1;
 let adrenalineSteal = "";
 let targetAction = "shot";
 let targetItem = "";
+let roundLoadKey = "";
+let shotAudio = null;
+let shotAudioUnlocked = false;
+let lastShotMsSeen = null;
+let lastServerMillis = 0;
+let refreshTimer = null;
+let refreshing = false;
+let lastBeerEjectSeq = 0;
+let beerEjectHideTimer = null;
+
+const shotSoundSrc = "/audio/shotgun.mp3";
 
 const $ = (id) => document.getElementById(id);
 
@@ -81,7 +92,33 @@ async function keepAwake() {
   }
 }
 
+function getShotAudio() {
+  if (!shotAudio) {
+    shotAudio = new Audio(shotSoundSrc);
+    shotAudio.preload = "auto";
+    shotAudio.volume = 1;
+  }
+  return shotAudio;
+}
+
+async function unlockShotAudio() {
+  if (shotAudioUnlocked) return;
+  const audio = getShotAudio();
+  try {
+    audio.muted = true;
+    audio.currentTime = 0;
+    await audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.muted = false;
+    shotAudioUnlocked = true;
+  } catch {
+    audio.muted = false;
+  }
+}
+
 async function enterImmersiveMode() {
+  unlockShotAudio();
   await requestFullscreenMode();
   await lockLandscape();
   await keepAwake();
@@ -89,6 +126,7 @@ async function enterImmersiveMode() {
 }
 
 async function api(path, body) {
+  const requestStartedAt = Date.now();
   const opts = body ? {
     method: "POST",
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
@@ -96,11 +134,16 @@ async function api(path, body) {
   } : {};
   const res = await fetch(path, opts);
   const text = await res.text();
+  const responseAt = Date.now();
   let data;
   try {
     data = JSON.parse(text);
   } catch {
     data = {ok: false, error: text || res.statusText};
+  }
+  if (typeof data.millis === "number") {
+    data._clockOffsetMs = Math.round(((requestStartedAt + responseAt) / 2) - data.millis);
+    data._responseAt = responseAt;
   }
   if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
   return data;
@@ -249,7 +292,13 @@ async function handleAdrenalineVerification(payload) {
     $("adrenalineStatus").textContent = `Wrong tag. Scan ${itemLabel(adrenalineSteal)}.`;
     return;
   }
-  await finishAdrenalineUse(payload);
+  $("adrenalineStatus").textContent = "Tag verified. Using item...";
+  try {
+    await finishAdrenalineUse(payload);
+  } catch (e) {
+    $("adrenalineStatus").textContent = e.message;
+    setNfcStatus(e.message);
+  }
 }
 
 async function submitScanPayload(payload, target = selectedTarget) {
@@ -397,6 +446,140 @@ function playerBySlot(slot) {
   return opponents[slot - 1] || null;
 }
 
+function renderEndScreen() {
+  const panel = $("endScreenPanel");
+  const winner = state && state.players.find((p) => p.id === state.winner);
+  const show = Boolean(state && state.winner >= 0 && !state.round_intro_active);
+  panel.classList.toggle("hidden", !show);
+  if (!show) return;
+
+  $("endTitle").textContent = winner ? `${winner.name} survived` : "Round over";
+  $("endText").textContent = winner && winner.id === playerId ? "You won the gamble." : `${winner ? winner.name : "Someone"} won the gamble.`;
+  $("endStart").classList.toggle("hidden", !isAdmin);
+}
+
+function renderRoundLoad() {
+  const panel = $("roundLoadPanel");
+  if (!state || state.phase !== "active" || !state.round_intro_active) {
+    panel.classList.add("hidden");
+    roundLoadKey = "";
+    return;
+  }
+  const live = Math.max(0, Number(state.live_remaining) || 0);
+  const blank = Math.max(0, Number(state.blank_remaining) || 0);
+  const total = live + blank;
+  if (total <= 0) {
+    panel.classList.add("hidden");
+    roundLoadKey = "";
+    return;
+  }
+
+  const elapsed = Math.max(0, Number(state.round_intro_elapsed_ms) || 0);
+  const duration = Math.max(1, Number(state.round_intro_duration_ms) || 5200);
+  const key = `${state.round}:${state.shell_index}:${live}:${blank}:${duration}`;
+  panel.classList.remove("hidden");
+  $("roundLoadTitle").textContent = `Round ${state.round || ""}`;
+  if (roundLoadKey !== key) {
+    const revealMs = Math.min(total * 430, 3500);
+    const shells = [];
+    for (let i = 0; i < total; i++) {
+      const shellLive = i >= blank;
+      const startX = Math.round((i - (total - 1) / 2) * 48 - 21);
+      const groupX = Math.round((i - (total - 1) / 2) * 24 - 21);
+      const delay = Math.round((i * revealMs) / total);
+      shells.push(`<img class="round-load-shell" src="/images/bullets/${shellLive ? "live" : "blank"}.png" alt="" style="--start-x:${startX};--group-x:${groupX};--shell-delay:${delay}ms;">`);
+    }
+    $("roundLoadShells").innerHTML = shells.join("");
+    roundLoadKey = key;
+  }
+  $("roundLoadShells").style.setProperty("--round-duration", `${duration}ms`);
+  $("roundLoadShells").style.setProperty("--round-offset", `${elapsed}ms`);
+}
+
+function hideBeerEject() {
+  $("beerEjectPanel").classList.add("hidden");
+}
+
+function renderBeerEject() {
+  if (!state) return;
+  const seq = Number(state.beer_eject_seq) || 0;
+  if (!seq) {
+    lastBeerEjectSeq = 0;
+    hideBeerEject();
+    return;
+  }
+  if (seq === lastBeerEjectSeq) return;
+
+  const eventMs = Number(state.beer_eject_ms) || 0;
+  const serverMillis = Number(state.millis) || 0;
+  const duration = Math.max(1, Number(state.beer_eject_duration_ms) || 900);
+  const elapsed = Math.max(0, serverMillis && eventMs ? serverMillis - eventMs : 0);
+  lastBeerEjectSeq = seq;
+  if (elapsed >= duration) {
+    hideBeerEject();
+    return;
+  }
+
+  const panel = $("beerEjectPanel");
+  const shell = $("beerEjectShell");
+  shell.src = `/images/bullets/${state.beer_eject_live ? "live" : "blank"}.png`;
+  shell.style.setProperty("--beer-eject-duration", `${duration}ms`);
+  shell.style.setProperty("--beer-eject-offset", `${elapsed}ms`);
+  shell.style.animation = "none";
+  void shell.offsetWidth;
+  shell.style.animation = "";
+  panel.classList.remove("hidden");
+  if (beerEjectHideTimer) window.clearTimeout(beerEjectHideTimer);
+  beerEjectHideTimer = window.setTimeout(hideBeerEject, duration - elapsed + 80);
+}
+
+function playShotEffect(live, playAudio) {
+  if ("vibrate" in navigator) {
+    navigator.vibrate(live ? [55, 28, 95, 32, 60] : [38, 22, 42]);
+  }
+  if (!playAudio) return;
+  try {
+    const audio = getShotAudio();
+    audio.pause();
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  } catch {
+    // Audio can still be blocked if the browser has not accepted a gesture yet.
+  }
+}
+
+function syncShotEffect() {
+  if (!state || playerId < 0 || !state.you) return;
+
+  const serverMillis = Number(state.millis) || 0;
+  if (serverMillis && lastServerMillis && serverMillis + 10000 < lastServerMillis) {
+    lastShotMsSeen = null;
+  }
+  if (serverMillis) lastServerMillis = serverMillis;
+
+  const seq = Number(state.shot_seq) || 0;
+  const shotMs = Number(state.last_shot_ms) || 0;
+  if (!seq || !shotMs) {
+    if (!seq) lastShotMsSeen = 0;
+    return;
+  }
+  if (lastShotMsSeen === null) {
+    lastShotMsSeen = shotMs;
+    return;
+  }
+  if (shotMs <= lastShotMsSeen) return;
+
+  lastShotMsSeen = shotMs;
+  const shooter = Number(state.last_shot_shooter);
+  const playAudio = shooter === playerId;
+  const phoneDelay = Number(state.shot_phone_delay_ms) || 220;
+  const offset = Number.isFinite(state._clockOffsetMs) ? state._clockOffsetMs : Date.now() - serverMillis;
+  const targetLocalMs = shotMs + phoneDelay + offset;
+  const delay = Math.max(0, Math.min(750, targetLocalMs - Date.now()));
+  const live = Boolean(state.last_shot_live);
+  window.setTimeout(() => playShotEffect(live, playAudio), delay);
+}
+
 function render() {
   if (!state) return;
   isAdmin = playerId >= 0 && state.admin === playerId;
@@ -414,6 +597,10 @@ function render() {
   lastPendingScanTotal = pendingScanTotal;
   document.body.classList.toggle("dead-player", Boolean(me && !me.alive));
   document.body.classList.toggle("jammed-player", jammed);
+  syncShotEffect();
+  renderRoundLoad();
+  renderBeerEject();
+  renderEndScreen();
 
   const turnTitle = $("turnTitle");
   let title = "WAITING";
@@ -498,6 +685,8 @@ function render() {
   $("scan").disabled = playerId < 0 || state.phase !== "active" || pendingScans <= 0;
   const needsScans = playerId >= 0 && state.phase === "active" && pendingScanTotal > 0;
   $("scanPanel").classList.toggle("hidden", !needsScans);
+  $("scanPanel").classList.toggle("with-round-load", needsScans && Boolean(state.round_intro_active));
+  document.body.classList.toggle("scan-over-round-load", needsScans && Boolean(state.round_intro_active));
   $("scanPrompt").textContent = pendingScans > 0
     ? `Scan ${pendingScans} item tag${pendingScans === 1 ? "" : "s"} to continue.`
     : "Waiting for others";
@@ -558,6 +747,33 @@ async function refresh() {
     state.message = "Session expired. Sign in again.";
   }
   render();
+}
+
+function refreshDelayMs() {
+  if (demoMode) return 1500;
+  if (state && state.phase === "active" && state.winner < 0) return 300;
+  return 1000;
+}
+
+function scheduleRefreshLoop() {
+  if (refreshTimer) window.clearTimeout(refreshTimer);
+  refreshTimer = window.setTimeout(refreshLoop, refreshDelayMs());
+}
+
+async function refreshLoop() {
+  if (refreshing) {
+    scheduleRefreshLoop();
+    return;
+  }
+  refreshing = true;
+  try {
+    await refresh();
+  } catch {
+    // Keep the local UI alive during transient AP/HTTPS stalls.
+  } finally {
+    refreshing = false;
+    scheduleRefreshLoop();
+  }
 }
 
 async function join() {
@@ -755,6 +971,7 @@ $("name").addEventListener("keydown", (event) => {
 });
 $("saveSetup").onclick = setup;
 $("start").onclick = start;
+$("endStart").onclick = start;
 $("reset").onclick = reset;
 $("nfcAdmin").onclick = openNfcPanel;
 $("closeNfc").onclick = closeNfcPanel;
@@ -805,6 +1022,5 @@ async function boot() {
   }
 }
 
-boot();
 syncJoinButton();
-setInterval(() => refresh().catch(() => {}), 1500);
+boot().finally(scheduleRefreshLoop);
