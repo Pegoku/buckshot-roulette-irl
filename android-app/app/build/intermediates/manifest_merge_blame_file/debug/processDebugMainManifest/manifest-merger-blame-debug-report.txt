@@ -1,0 +1,90 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="irl.buckshot.app"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="23"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.INTERNET" />
+11-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:2:5-67
+11-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:2:22-64
+12    <uses-permission android:name="android.permission.NFC" />
+12-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:3:5-62
+12-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:3:22-59
+13    <uses-permission android:name="android.permission.VIBRATE" />
+13-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:5-66
+13-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:22-63
+14    <uses-permission android:name="android.permission.WAKE_LOCK" />
+14-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:5-68
+14-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:22-65
+15
+16    <uses-feature
+16-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:5-82
+17        android:name="android.hardware.nfc"
+17-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:19-54
+18        android:required="false" />
+18-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:55-79
+19
+20    <application
+20-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:5-32:19
+21        android:allowBackup="false"
+21-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:9-36
+22        android:debuggable="true"
+23        android:extractNativeLibs="false"
+24        android:label="Buckshot IRL"
+24-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:9-37
+25        android:theme="@style/AppTheme"
+25-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:11:9-40
+26        android:usesCleartextTraffic="true" >
+26-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:9-44
+27        <activity
+27-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:13:9-31:20
+28            android:name="irl.buckshot.app.MainActivity"
+28-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:14:13-41
+29            android:configChanges="keyboardHidden|orientation|screenSize"
+29-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:15:13-74
+30            android:exported="true"
+30-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:16:13-36
+31            android:screenOrientation="landscape" >
+31-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:17:13-50
+32            <intent-filter>
+32-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:18:13-21:29
+33                <action android:name="android.intent.action.MAIN" />
+33-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:19:17-69
+33-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:19:25-66
+34
+35                <category android:name="android.intent.category.LAUNCHER" />
+35-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:20:17-77
+35-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:20:27-74
+36            </intent-filter>
+37            <intent-filter>
+37-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:22:13-26:29
+38                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+38-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:17-77
+38-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:25-74
+39
+40                <category android:name="android.intent.category.DEFAULT" />
+40-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:17-76
+40-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:27-73
+41
+42                <data android:mimeType="text/plain" />
+42-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:25:17-55
+42-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:25:23-52
+43            </intent-filter>
+44            <intent-filter>
+44-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:13-30:29
+45                <action android:name="android.nfc.action.TAG_DISCOVERED" />
+45-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:17-76
+45-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:25-73
+46
+47                <category android:name="android.intent.category.DEFAULT" />
+47-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:17-76
+47-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:27-73
+48            </intent-filter>
+49        </activity>
+50    </application>
+51
+52</manifest>

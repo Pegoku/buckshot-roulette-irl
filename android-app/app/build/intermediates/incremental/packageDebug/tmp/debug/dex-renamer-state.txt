@@ -1,0 +1,7 @@
+#Mon Jul 06 11:28:50 CST 2026
+base.0=/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
+base.1=/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/build/intermediates/dex/debug/mergeProjectDexDebug/2/classes.dex
+path.0=0/classes.dex
+path.1=2/classes.dex
+renamed.0=classes.dex
+renamed.1=classes2.dex

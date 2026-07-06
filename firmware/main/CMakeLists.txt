@@ -5,20 +5,15 @@ idf_component_register(
         "assets/soup_sprites.c"
         "assets/end_screen.c"
     INCLUDE_DIRS "."
-    EMBED_TXTFILES
-        "../certs/server.crt"
-        "../certs/server.key"
     REQUIRES
         esp_driver_gpio
         esp_driver_spi
         esp_event
         esp_http_server
-        esp_https_server
         esp_netif
         esp_timer
         esp_wifi
         lvgl
         nvs_flash
         qrcode
-        spiffs
 )

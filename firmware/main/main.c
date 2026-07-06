@@ -10,14 +10,12 @@
 #include "driver/spi_master.h"
 #include "esp_err.h"
 #include "esp_event.h"
-#include "esp_https_server.h"
 #include "esp_http_server.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_mac.h"
 #include "esp_random.h"
 #include "esp_timer.h"
-#include "esp_spiffs.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -178,13 +176,7 @@ static char ap_ssid[32];
 static char join_token[17];
 static char join_path[32];
 static char join_url[64];
-static char secure_join_url[64];
 static const char *DEV_JOIN_PATH = "/join/allow";
-
-extern const unsigned char server_crt_start[] asm("_binary_server_crt_start");
-extern const unsigned char server_crt_end[] asm("_binary_server_crt_end");
-extern const unsigned char server_key_start[] asm("_binary_server_key_start");
-extern const unsigned char server_key_end[] asm("_binary_server_key_end");
 
 static void save_tokens_locked(void);
 
@@ -1521,6 +1513,31 @@ static void send_error(httpd_req_t *req, const char *msg)
     send_json(req, json);
 }
 
+static void json_append(char **cursor, char *end, const char *fmt, ...)
+{
+    if (*cursor >= end) {
+        if (end > *cursor) {
+            **cursor = '\0';
+        }
+        return;
+    }
+    size_t remaining = end - *cursor;
+    va_list args;
+    va_start(args, fmt);
+    int written = vsnprintf(*cursor, remaining, fmt, args);
+    va_end(args);
+    if (written < 0) {
+        **cursor = '\0';
+        return;
+    }
+    if ((size_t)written >= remaining) {
+        *cursor = end - 1;
+        **cursor = '\0';
+        return;
+    }
+    *cursor += written;
+}
+
 static bool valid_join_path(const char *path)
 {
     return strcmp(path, join_path) == 0 || strcmp(path, DEV_JOIN_PATH) == 0;
@@ -1528,9 +1545,13 @@ static bool valid_join_path(const char *path)
 
 static esp_err_t api_state(httpd_req_t *req)
 {
-    char json[3000];
+    char *json = malloc(4096);
+    if (!json) {
+        send_error(req, "no memory");
+        return ESP_OK;
+    }
     char *w = json;
-    char *end = json + sizeof(json);
+    char *end = json + 4096;
     int pid = query_int(req, "pid", -1);
     lock_game();
     update_player_seen_locked(pid);
@@ -1541,7 +1562,7 @@ static esp_err_t api_state(httpd_req_t *req)
     uint32_t round_intro_elapsed = 0;
     uint32_t server_ms = now_ms();
     bool round_intro_active = game.phase == PHASE_ACTIVE && elapsed_window(server_ms, game.round_started_ms, TFT_ROUND_REVEAL_MS, &round_intro_elapsed);
-    w += snprintf(w, end - w,
+    json_append(&w, end,
                   "{\"ok\":true,\"millis\":%lu,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
                   "\"you\":%s,\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
                   "\"live_remaining\":%u,\"blank_remaining\":%u,\"pending_scan_total\":%u,\"round\":%u,\"round_intro_active\":%s,\"round_intro_elapsed_ms\":%lu,\"round_intro_duration_ms\":%u,"
@@ -1556,29 +1577,30 @@ static esp_err_t api_state(httpd_req_t *req)
                   (unsigned long)game.beer_eject_seq, (unsigned long)game.beer_eject_ms, game.beer_eject_live ? "true" : "false",
                   BEER_EJECT_ANIM_MS, game.armed_target);
     if (game.armed_target >= 0 && game.armed_target < MAX_PLAYERS && game.players[game.armed_target].active) {
-        w += snprintf(w, end - w, "\"armed_target_name\":\"%s\",", game.players[game.armed_target].name);
+        json_append(&w, end, "\"armed_target_name\":\"%s\",", game.players[game.armed_target].name);
     } else {
-        w += snprintf(w, end - w, "\"armed_target_name\":\"\",");
+        json_append(&w, end, "\"armed_target_name\":\"\",");
     }
-    w += snprintf(w, end - w, "\"players\":[");
+    json_append(&w, end, "\"players\":[");
     bool first_player = true;
     for (int i = 0; i < MAX_PLAYERS; i++) {
         if (!game.players[i].active) {
             continue;
         }
         player_t *p = &game.players[i];
-        w += snprintf(w, end - w, "%s{\"id\":%u,\"name\":\"%s\",\"color\":\"%s\",\"lives\":%u,\"alive\":%s,\"jammed\":%s,\"admin\":%s,\"pending_scans\":%u,\"inv\":[",
+        json_append(&w, end, "%s{\"id\":%u,\"name\":\"%s\",\"color\":\"%s\",\"lives\":%u,\"alive\":%s,\"jammed\":%s,\"admin\":%s,\"pending_scans\":%u,\"inv\":[",
                       first_player ? "" : ",", p->id, p->name, player_color_names[p->color % PLAYER_COLOR_COUNT], p->lives, p->alive ? "true" : "false",
                       p->skip_turn ? "true" : "false", p->id == game.admin_id ? "true" : "false", p->pending_item_scans);
         first_player = false;
         for (int item = 0; item < MAX_ITEMS; item++) {
-            w += snprintf(w, end - w, "%s%u", item == 0 ? "" : ",", p->inv[item]);
+            json_append(&w, end, "%s%u", item == 0 ? "" : ",", p->inv[item]);
         }
-        w += snprintf(w, end - w, "]}");
+        json_append(&w, end, "]}");
     }
-    snprintf(w, end - w, "]}");
+    json_append(&w, end, "]}");
     unlock_game();
     send_json(req, json);
+    free(json);
     return ESP_OK;
 }
 
@@ -2136,70 +2158,14 @@ static esp_err_t api_write_mode(httpd_req_t *req)
     return ESP_OK;
 }
 
-static const char *content_type_for(const char *path)
-{
-    const char *ext = strrchr(path, '.');
-    if (!ext) {
-        return "text/plain";
-    }
-    if (strcmp(ext, ".html") == 0) {
-        return "text/html";
-    }
-    if (strcmp(ext, ".css") == 0) {
-        return "text/css";
-    }
-    if (strcmp(ext, ".js") == 0) {
-        return "application/javascript";
-    }
-    if (strcmp(ext, ".webmanifest") == 0) {
-        return "application/manifest+json";
-    }
-    if (strcmp(ext, ".png") == 0) {
-        return "image/png";
-    }
-    if (strcmp(ext, ".mp3") == 0) {
-        return "audio/mpeg";
-    }
-    return "application/octet-stream";
-}
-
-static esp_err_t send_file(httpd_req_t *req, const char *path)
-{
-    char full[96];
-    snprintf(full, sizeof(full), "/web%s", path);
-    FILE *f = fopen(full, "r");
-    if (!f) {
-        httpd_resp_send_err(req, HTTPD_404_NOT_FOUND, "not found");
-        return ESP_OK;
-    }
-    httpd_resp_set_hdr(req, "Cache-Control", "no-store");
-    httpd_resp_set_type(req, content_type_for(path));
-    char chunk[512];
-    size_t read;
-    while ((read = fread(chunk, 1, sizeof(chunk), f)) > 0) {
-        if (httpd_resp_send_chunk(req, chunk, read) != ESP_OK) {
-            fclose(f);
-            return ESP_FAIL;
-        }
-    }
-    fclose(f);
-    httpd_resp_send_chunk(req, NULL, 0);
-    return ESP_OK;
-}
-
 static esp_err_t root_handler(httpd_req_t *req)
 {
-    char html[768];
-    snprintf(html, sizeof(html),
+    const char *html =
         "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
         "<title>Buckshot IRL</title><body style='font-family:system-ui;background:#111;color:#eee;padding:24px'>"
         "<h1>Buckshot IRL</h1>"
-        "<p>Use the normal HTTP game page unless you are scanning or writing NFC tags.</p>"
-        "<p><a style='color:#8bd3ff;font-size:20px' href='%s'>Open game</a></p>"
-        "<p><a style='color:#8bd3ff' href='%s'>Open secure NFC page</a></p>"
-        "<p><a style='color:#8bd3ff' href='/cert'>Download HTTPS certificate</a></p>"
-        "</body>",
-        join_url, secure_join_url);
+        "<p>Use the Buckshot IRL Android app. This device serves API-only HTTP.</p>"
+        "</body>";
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
@@ -2220,18 +2186,6 @@ static esp_err_t expired_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-static esp_err_t cert_handler(httpd_req_t *req)
-{
-    size_t cert_len = server_crt_end - server_crt_start;
-    if (cert_len > 0 && server_crt_start[cert_len - 1] == '\0') {
-        cert_len--;
-    }
-    httpd_resp_set_type(req, "application/x-x509-ca-cert");
-    httpd_resp_set_hdr(req, "Content-Disposition", "attachment; filename=\"buckshot-irl.crt\"");
-    httpd_resp_send(req, (const char *)server_crt_start, cert_len);
-    return ESP_OK;
-}
-
 static esp_err_t join_handler(httpd_req_t *req)
 {
     if (!valid_join_path(req->uri)) {
@@ -2240,12 +2194,7 @@ static esp_err_t join_handler(httpd_req_t *req)
         httpd_resp_send(req, "Session expired", HTTPD_RESP_USE_STRLEN);
         return ESP_OK;
     }
-    return send_file(req, "/index.html");
-}
-
-static esp_err_t static_handler(httpd_req_t *req)
-{
-    return send_file(req, req->uri);
+    return root_handler(req);
 }
 
 static void register_get(httpd_handle_t server, const char *uri, esp_err_t (*handler)(httpd_req_t *))
@@ -2263,15 +2212,8 @@ static void register_post(httpd_handle_t server, const char *uri, esp_err_t (*ha
 static void register_routes(httpd_handle_t server)
 {
     register_get(server, "/", root_handler);
-    register_get(server, "/cert", cert_handler);
     register_get(server, "/expired", expired_handler);
     register_get(server, "/join/*", join_handler);
-    register_get(server, "/app.css", static_handler);
-    register_get(server, "/app.js", static_handler);
-    register_get(server, "/manifest.webmanifest", static_handler);
-    register_get(server, "/fonts/*", static_handler);
-    register_get(server, "/images/*", static_handler);
-    register_get(server, "/audio/*", static_handler);
     register_get(server, "/api/state", api_state);
     register_post(server, "/api/register", api_register);
     register_post(server, "/api/setup", api_setup);
@@ -2284,26 +2226,6 @@ static void register_routes(httpd_handle_t server)
     register_post(server, "/api/reset", api_reset);
 }
 
-static void start_https_server(void)
-{
-    httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
-    config.httpd.uri_match_fn = httpd_uri_match_wildcard;
-    config.httpd.max_uri_handlers = 20;
-    config.httpd.max_open_sockets = 4;
-    config.httpd.backlog_conn = 2;
-    config.httpd.lru_purge_enable = true;
-    config.httpd.recv_wait_timeout = 5;
-    config.httpd.send_wait_timeout = 5;
-    config.servercert = server_crt_start;
-    config.servercert_len = server_crt_end - server_crt_start;
-    config.prvtkey_pem = server_key_start;
-    config.prvtkey_len = server_key_end - server_key_start;
-
-    httpd_handle_t server = NULL;
-    ESP_ERROR_CHECK(httpd_ssl_start(&server, &config));
-    register_routes(server);
-}
-
 static void start_http_server(void)
 {
     httpd_config_t config = HTTPD_DEFAULT_CONFIG();
@@ -2313,17 +2235,6 @@ static void start_http_server(void)
     httpd_handle_t server = NULL;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
     register_routes(server);
-}
-
-static void start_spiffs(void)
-{
-    esp_vfs_spiffs_conf_t conf = {
-        .base_path = "/web",
-        .partition_label = "web",
-        .max_files = 5,
-        .format_if_mount_failed = false,
-    };
-    ESP_ERROR_CHECK(esp_vfs_spiffs_register(&conf));
 }
 
 static void make_ids(void)
@@ -2466,19 +2377,15 @@ void app_main(void)
     unlock_game();
     make_ids();
     snprintf(join_url, sizeof(join_url), "http://%s%s", AP_IP, join_path);
-    snprintf(secure_join_url, sizeof(secure_join_url), "https://%s%s", AP_IP, join_path);
 
     ESP_LOGI(TAG, "AP SSID: %s", ap_ssid);
-    ESP_LOGI(TAG, "Join URL: %s", join_url);
-    ESP_LOGI(TAG, "Secure NFC URL: %s", secure_join_url);
+    ESP_LOGI(TAG, "API URL: http://%s", AP_IP);
 
-    start_spiffs();
     lcd_init();
     xTaskCreatePinnedToCore(display_task, "display", 16384, NULL, 6, &display_task_handle, 1);
     mark_display_dirty();
 
     start_wifi_ap();
-    start_https_server();
     start_http_server();
 
     xTaskCreatePinnedToCore(button_task, "button", 2048, NULL, 10, NULL, 0);
