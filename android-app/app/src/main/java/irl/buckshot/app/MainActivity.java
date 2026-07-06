@@ -5,6 +5,7 @@ import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.Context;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -22,8 +23,14 @@ import android.webkit.WebViewClient;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.net.wifi.WifiManager;
 
 import java.io.ByteArrayOutputStream;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -329,5 +336,66 @@ public class MainActivity extends Activity {
         public void immersive() {
             runOnUiThread(MainActivity.this::enterImmersiveMode);
         }
+
+        @JavascriptInterface
+        public void discoverHost() {
+            new Thread(() -> {
+                String url = discoverBuckshotUrl();
+                callJs("window.onNativeDiscovery && window.onNativeDiscovery(" + (!url.isEmpty()) + "," + jsString(url) + ")");
+            }, "buckshot-discovery").start();
+        }
+    }
+
+    private String discoverBuckshotUrl() {
+        final int port = 4210;
+        byte[] request = "buckshot:discover".getBytes(StandardCharsets.UTF_8);
+        byte[] response = new byte[128];
+        WifiManager.MulticastLock lock = null;
+        try {
+            WifiManager wifi = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wifi != null) {
+                lock = wifi.createMulticastLock("buckshot-discovery");
+                lock.setReferenceCounted(false);
+                lock.acquire();
+            }
+        } catch (Exception ignored) {
+        }
+        try (DatagramSocket socket = new DatagramSocket(null)) {
+            socket.setReuseAddress(true);
+            socket.setBroadcast(true);
+            socket.bind(new InetSocketAddress(0));
+            socket.setSoTimeout(650);
+
+            InetAddress[] targets = new InetAddress[]{
+                InetAddress.getByName("255.255.255.255"),
+                InetAddress.getByName("192.168.4.255")
+            };
+            for (InetAddress target : targets) {
+                socket.send(new DatagramPacket(request, request.length, target, port));
+            }
+
+            long deadline = System.currentTimeMillis() + 900;
+            while (System.currentTimeMillis() < deadline) {
+                try {
+                    DatagramPacket packet = new DatagramPacket(response, response.length);
+                    socket.receive(packet);
+                    String text = new String(packet.getData(), 0, packet.getLength(), StandardCharsets.UTF_8);
+                    if (text.startsWith("buckshot:esp32:")) {
+                        return text.substring("buckshot:esp32:".length());
+                    }
+                } catch (SocketTimeoutException ignored) {
+                    break;
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (lock != null && lock.isHeld()) {
+                try {
+                    lock.release();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        return "";
     }
 }

@@ -33,10 +33,11 @@ let offlineMode = false;
 let lastActionAt = 0;
 
 const nativeApp = Boolean(window.AndroidNfc);
-const espBaseUrl = "http://192.168.4.1";
+let espBaseUrl = localStorage.getItem("buckshotBaseUrl") || "http://192.168.4.1";
 const shotSoundSrc = "audio/shotgun.mp3";
 const apiTimeoutMs = 1400;
 let nativeWriteResolve = null;
+let nativeDiscoveryResolve = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -140,7 +141,7 @@ async function enterImmersiveMode() {
   if (playerId >= 0) startPlayerNfc();
 }
 
-async function api(path, body) {
+async function api(path, body, retried = false) {
   const requestStartedAt = Date.now();
   const url = nativeApp && path.startsWith("/") ? `${espBaseUrl}${path}` : path;
   const controller = new AbortController();
@@ -169,6 +170,9 @@ async function api(path, body) {
     if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
     return data;
   } catch (e) {
+    if (nativeApp && !retried && await updateEspBaseUrl()) {
+      return api(path, body, true);
+    }
     if (e.name === "AbortError") throw new Error("ESP32 did not respond");
     throw e;
   } finally {
@@ -455,6 +459,36 @@ window.onNativeNfcWrite = (ok, message) => {
   }
 };
 
+window.onNativeDiscovery = (ok, url) => {
+  if (!nativeDiscoveryResolve) return;
+  nativeDiscoveryResolve(ok ? url : "");
+  nativeDiscoveryResolve = null;
+};
+
+function discoverEsp() {
+  if (!window.AndroidApp || !window.AndroidApp.discoverHost) return Promise.resolve("");
+  return new Promise((resolve) => {
+    nativeDiscoveryResolve = resolve;
+    window.AndroidApp.discoverHost();
+    window.setTimeout(() => {
+      if (nativeDiscoveryResolve) {
+        nativeDiscoveryResolve("");
+        nativeDiscoveryResolve = null;
+      }
+    }, 1200);
+  });
+}
+
+async function updateEspBaseUrl() {
+  const url = await discoverEsp();
+  if (url) {
+    espBaseUrl = url;
+    localStorage.setItem("buckshotBaseUrl", url);
+    return true;
+  }
+  return false;
+}
+
 function nativeWriteTag(payload) {
   return new Promise((resolve) => {
     nativeWriteResolve = resolve;
@@ -495,7 +529,7 @@ function makeOfflineState(message = "Connect to Buckshot WiFi") {
 
 function setOffline(message = "Connect to Buckshot WiFi") {
   offlineMode = true;
-  if ($("offlineText")) $("offlineText").textContent = `${message}. Join the ESP32 access point, then retry.`;
+  if ($("offlineText")) $("offlineText").textContent = `${message}. Use the same WiFi/hotspot, then retry or enter the TFT QR URL/IP.`;
   if ($("offlinePanel")) $("offlinePanel").classList.remove("hidden");
 }
 
@@ -504,9 +538,38 @@ function setOnline() {
   if ($("offlinePanel")) $("offlinePanel").classList.add("hidden");
 }
 
-async function retryConnection() {
-  if ($("offlineText")) $("offlineText").textContent = "Trying 192.168.4.1...";
+function normalizeEspBaseUrl(value) {
+  let text = String(value || "").trim();
+  if (!text) throw new Error("Enter the IP or QR URL from the TFT");
+  if (!/^https?:\/\//i.test(text)) text = `http://${text}`;
+  let url;
   try {
+    url = new URL(text);
+  } catch {
+    throw new Error("Invalid ESP32 address");
+  }
+  if (!url.hostname) throw new Error("Invalid ESP32 address");
+  return `${url.protocol}//${url.host}`;
+}
+
+async function useManualAddress() {
+  try {
+    const url = normalizeEspBaseUrl($("offlineAddress").value);
+    espBaseUrl = url;
+    localStorage.setItem("buckshotBaseUrl", url);
+    if ($("offlineText")) $("offlineText").textContent = `Trying ${url}...`;
+    await refresh();
+    setOnline();
+  } catch (e) {
+    setOffline(e.message);
+  }
+}
+
+async function retryConnection() {
+  if ($("offlineText")) $("offlineText").textContent = "Finding Buckshot ESP32...";
+  try {
+    await updateEspBaseUrl();
+    if ($("offlineText")) $("offlineText").textContent = `Trying ${espBaseUrl}...`;
     await refresh();
     setOnline();
   } catch (e) {
@@ -1173,6 +1236,13 @@ $("closeItemInfo").onclick = () => $("itemInfoPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
 $("scanRequired").onclick = scanNfc;
 $("offlineRetry").onclick = retryConnection;
+$("offlineUseAddress").onclick = useManualAddress;
+$("offlineAddress").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    useManualAddress();
+  }
+});
 
 document.addEventListener("pointerdown", enterImmersiveMode);
 document.addEventListener("click", enterImmersiveMode);
@@ -1190,6 +1260,7 @@ async function boot() {
     state = makeOfflineState();
     render();
     setOffline("Connect to Buckshot WiFi");
+    await updateEspBaseUrl();
   }
   try {
     await refresh();

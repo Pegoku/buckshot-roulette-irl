@@ -583,6 +583,14 @@ h2 {
   margin-top: 16px;
 }
 
+.offline-card .scan-button + .scan-button {
+  margin-top: 10px;
+}
+
+.offline-address {
+  margin-top: 14px;
+}
+
 @keyframes beerShellEject {
   0% {
     opacity: 0;

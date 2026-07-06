@@ -18,6 +18,8 @@
 #include "esp_timer.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "lwip/inet.h"
+#include "lwip/sockets.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "freertos/task.h"
@@ -39,9 +41,9 @@
 #define LCD_WIDTH 320
 #define LCD_HEIGHT 240
 #define LCD_HOST SPI2_HOST
-#define AP_CHANNEL 6
-#define AP_MAX_CLIENTS 8
-#define AP_IP "192.168.4.1"
+#define STA_WIFI_SSID "POCO F7"
+#define STA_WIFI_PASSWORD "skibidiwifi"
+#define DISCOVERY_PORT 4210
 
 #define MAX_PLAYERS 4
 #define MAX_NAME_LEN 15
@@ -172,7 +174,7 @@ static uint16_t lvgl_tx_line[LCD_WIDTH];
 static game_t game;
 static volatile bool trigger_event;
 static volatile uint32_t display_version;
-static char ap_ssid[32];
+static char sta_ip[16];
 static char join_token[17];
 static char join_path[32];
 static char join_url[64];
@@ -747,7 +749,7 @@ static void lcd_draw_join_qr(const game_t *snap)
     tft_crt_base(root);
     lv_obj_t *bar = tft_panel(root, 12, 12, LCD_WIDTH - 24, 28, lv_color_hex(0x00ff66), LV_OPA_30);
     lv_obj_set_style_bg_color(bar, lv_color_hex(0x052716), 0);
-    tft_label(bar, ap_ssid, 8, 7, lv_color_hex(0x00ff66), 1);
+    tft_label(bar, sta_ip[0] ? sta_ip : "CONNECTING WIFI", 8, 7, lv_color_hex(0x00ff66), 1);
 
     char players[24];
     snprintf(players, sizeof(players), "P:%u/4", snap->player_count);
@@ -759,8 +761,13 @@ static void lcd_draw_join_qr(const game_t *snap)
     } else {
         tft_label(root, "SCAN QR", 216, 212, lv_color_hex(0x168f4a), 1);
     }
-    tft_label(root, "LIVE TERMINAL", 18, 44, lv_color_hex(0x168f4a), 1);
+    tft_label(root, sta_ip[0] ? "LIVE TERMINAL" : STA_WIFI_SSID, 18, 44, lv_color_hex(0x168f4a), 1);
     tft_render_now();
+
+    if (!sta_ip[0]) {
+        lcd_draw_token_qr_hint();
+        return;
+    }
 
     esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
     cfg.display_func = lcd_draw_qr_callback;
@@ -1568,7 +1575,7 @@ static esp_err_t api_state(httpd_req_t *req)
                   "\"live_remaining\":%u,\"blank_remaining\":%u,\"pending_scan_total\":%u,\"round\":%u,\"round_intro_active\":%s,\"round_intro_elapsed_ms\":%lu,\"round_intro_duration_ms\":%u,"
                   "\"shot_seq\":%lu,\"last_shot_ms\":%lu,\"last_shot_live\":%s,\"last_shot_shooter\":%d,\"shot_phone_delay_ms\":%u,"
                   "\"beer_eject_seq\":%lu,\"beer_eject_ms\":%lu,\"beer_eject_live\":%s,\"beer_eject_duration_ms\":%u,\"armed_target\":%d,",
-                  (unsigned long)server_ms, ap_ssid, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
+                  (unsigned long)server_ms, sta_ip[0] ? sta_ip : STA_WIFI_SSID, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
                   game.admin_id, game.player_count, game.current, game.winner,
                   game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, pending_total,
                   game.round, round_intro_active ? "true" : "false", (unsigned long)round_intro_elapsed, TFT_ROUND_REVEAL_MS,
@@ -2239,32 +2246,97 @@ static void start_http_server(void)
 
 static void make_ids(void)
 {
-    uint8_t mac[6];
-    ESP_ERROR_CHECK(esp_read_mac(mac, ESP_MAC_WIFI_SOFTAP));
-    snprintf(ap_ssid, sizeof(ap_ssid), "Buckshot-%02X%02X%02X", mac[3], mac[4], mac[5]);
+    sta_ip[0] = '\0';
     snprintf(join_token, sizeof(join_token), "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
     snprintf(join_path, sizeof(join_path), "/join/%s", join_token);
+    snprintf(join_url, sizeof(join_url), "http://%s", STA_WIFI_SSID);
 }
 
-static void start_wifi_ap(void)
+static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
+        esp_wifi_connect();
+    } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
+        wifi_event_sta_disconnected_t *event = (wifi_event_sta_disconnected_t *)event_data;
+        sta_ip[0] = '\0';
+        ESP_LOGW(TAG, "STA disconnected reason=%u, reconnecting", event ? event->reason : 0);
+        esp_wifi_connect();
+    } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
+        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+        snprintf(sta_ip, sizeof(sta_ip), IPSTR, IP2STR(&event->ip_info.ip));
+        snprintf(join_url, sizeof(join_url), "http://%s%s", sta_ip, join_path);
+        ESP_LOGI(TAG, "STA IP: %s", sta_ip);
+        mark_display_dirty();
+    }
+}
+
+static void start_wifi(void)
 {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    esp_netif_create_default_wifi_ap();
+    esp_netif_create_default_wifi_sta();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-    wifi_config_t wifi_config = {
-        .ap = {
-            .channel = AP_CHANNEL,
-            .authmode = WIFI_AUTH_OPEN,
-            .max_connection = AP_MAX_CLIENTS,
-        },
-    };
-    strlcpy((char *)wifi_config.ap.ssid, ap_ssid, sizeof(wifi_config.ap.ssid));
-    wifi_config.ap.ssid_len = strlen(ap_ssid);
-    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
-    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, wifi_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifi_event_handler, NULL, NULL));
+    wifi_config_t sta_config = {0};
+    strlcpy((char *)sta_config.sta.ssid, STA_WIFI_SSID, sizeof(sta_config.sta.ssid));
+    strlcpy((char *)sta_config.sta.password, STA_WIFI_PASSWORD, sizeof(sta_config.sta.password));
+    sta_config.sta.bssid_set = false;
+    sta_config.sta.channel = 0;
+    sta_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    sta_config.sta.sort_method = WIFI_CONNECT_AP_BY_SIGNAL;
+    sta_config.sta.threshold.authmode = WIFI_AUTH_WPA_PSK;
+    sta_config.sta.pmf_cfg.capable = false;
+    sta_config.sta.pmf_cfg.required = false;
+    sta_config.sta.disable_wpa3_compatible_mode = true;
+    ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+    ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &sta_config));
+    ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
     ESP_ERROR_CHECK(esp_wifi_start());
+}
+
+static void discovery_task(void *arg)
+{
+    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+    if (sock < 0) {
+        ESP_LOGE(TAG, "Discovery socket failed");
+        vTaskDelete(NULL);
+        return;
+    }
+    int yes = 1;
+    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(yes));
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(DISCOVERY_PORT),
+        .sin_addr.s_addr = htonl(INADDR_ANY),
+    };
+    if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
+        ESP_LOGE(TAG, "Discovery bind failed");
+        close(sock);
+        vTaskDelete(NULL);
+        return;
+    }
+    char buf[80];
+    while (true) {
+        struct sockaddr_in peer;
+        socklen_t peer_len = sizeof(peer);
+        int len = recvfrom(sock, buf, sizeof(buf) - 1, 0, (struct sockaddr *)&peer, &peer_len);
+        if (len <= 0) {
+            continue;
+        }
+        buf[len] = '\0';
+        if (strncmp(buf, "buckshot:discover", 17) != 0) {
+            continue;
+        }
+        if (!sta_ip[0]) {
+            continue;
+        }
+        const char *ip = sta_ip;
+        char reply[96];
+        snprintf(reply, sizeof(reply), "buckshot:esp32:http://%s", ip);
+        sendto(sock, reply, strlen(reply), 0, (struct sockaddr *)&peer, peer_len);
+    }
 }
 
 static void button_task(void *arg)
@@ -2376,17 +2448,15 @@ void app_main(void)
     load_tokens_locked();
     unlock_game();
     make_ids();
-    snprintf(join_url, sizeof(join_url), "http://%s%s", AP_IP, join_path);
-
-    ESP_LOGI(TAG, "AP SSID: %s", ap_ssid);
-    ESP_LOGI(TAG, "API URL: http://%s", AP_IP);
+    ESP_LOGI(TAG, "STA SSID: %s", STA_WIFI_SSID);
 
     lcd_init();
     xTaskCreatePinnedToCore(display_task, "display", 16384, NULL, 6, &display_task_handle, 1);
     mark_display_dirty();
 
-    start_wifi_ap();
+    start_wifi();
     start_http_server();
+    xTaskCreatePinnedToCore(discovery_task, "discover", 4096, NULL, 5, NULL, 0);
 
     xTaskCreatePinnedToCore(button_task, "button", 2048, NULL, 10, NULL, 0);
     xTaskCreatePinnedToCore(game_task, "game", 4096, NULL, 8, NULL, 0);
