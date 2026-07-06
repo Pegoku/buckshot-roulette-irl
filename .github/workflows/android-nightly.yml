@@ -64,7 +64,9 @@ jobs:
         run: |
           gh release view nightly >/dev/null 2>&1 || gh release create nightly \
             --title "Nightly APK" \
-            --notes "Automated APK build from the latest push to main." \
+            --notes "Download and install the APK on your device. Then connect your device to the same Wi-Fi network shown on the display and start the game from the admin menu.
+
+Remember to disconnect mobile data and VPN before playing." \
             --prerelease
           gh release upload nightly \
             android-app/app/build/outputs/apk/debug/buckshot-roulette-irl-nightly.apk \
