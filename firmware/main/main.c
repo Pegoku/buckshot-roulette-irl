@@ -175,6 +175,7 @@ static lv_color_t *lvgl_buf1;
 static lv_color_t *lvgl_buf2;
 static uint16_t lvgl_tx_line[LCD_WIDTH];
 static game_t game;
+static token_t token_scratch[MAX_TOKENS];
 static volatile bool trigger_event;
 static volatile uint32_t display_version;
 static char sta_ip[16];
@@ -1161,13 +1162,12 @@ static void save_tokens_locked(void)
     if (nvs_open("buckshot", NVS_READWRITE, &nvs) != ESP_OK) {
         return;
     }
-    token_t persisted[MAX_TOKENS];
-    memcpy(persisted, game.tokens, sizeof(persisted));
+    memcpy(token_scratch, game.tokens, sizeof(token_scratch));
     for (int i = 0; i < MAX_TOKENS; i++) {
-        persisted[i].owner = -1;
-        persisted[i].consumed = false;
+        token_scratch[i].owner = -1;
+        token_scratch[i].consumed = false;
     }
-    nvs_set_blob(nvs, "tokens", persisted, sizeof(persisted));
+    nvs_set_blob(nvs, "tokens", token_scratch, sizeof(token_scratch));
     nvs_commit(nvs);
     nvs_close(nvs);
 }
@@ -1179,7 +1179,9 @@ static void load_tokens_locked(void)
         return;
     }
     size_t len = sizeof(game.tokens);
-    if (nvs_get_blob(nvs, "tokens", game.tokens, &len) != ESP_OK || len != sizeof(game.tokens)) {
+    memset(game.tokens, 0, sizeof(game.tokens));
+    esp_err_t err = nvs_get_blob(nvs, "tokens", game.tokens, &len);
+    if (err != ESP_OK || len > sizeof(game.tokens) || (len % sizeof(token_t)) != 0) {
         memset(game.tokens, 0, sizeof(game.tokens));
     }
     for (int i = 0; i < MAX_TOKENS; i++) {
@@ -1362,10 +1364,9 @@ static void resolve_shot(void)
 
 static void game_reset(void)
 {
-    token_t tokens[MAX_TOKENS];
-    memcpy(tokens, game.tokens, sizeof(tokens));
+    memcpy(token_scratch, game.tokens, sizeof(token_scratch));
     memset(&game, 0, sizeof(game));
-    memcpy(game.tokens, tokens, sizeof(game.tokens));
+    memcpy(game.tokens, token_scratch, sizeof(game.tokens));
     for (int i = 0; i < MAX_TOKENS; i++) {
         game.tokens[i].owner = -1;
         game.tokens[i].consumed = false;
