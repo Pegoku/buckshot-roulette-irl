@@ -2,3 +2,4 @@ node_modules/
 web-emulator/node_modules/
 web-emulator/dist/
 .DS_Store
+*.mp4

@@ -126,11 +126,4 @@ If your board appears as a different port, replace `/dev/ttyACM0`. Common altern
 
 Exit the monitor with `Ctrl+]`.
 
-
-
-
-# DEMO video:
-
-![demo](demo-soupshot.mp4)
-
 _Made with much love, inspired to create hate :)_
