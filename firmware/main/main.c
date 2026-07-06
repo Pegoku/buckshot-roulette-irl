@@ -1255,15 +1255,15 @@ static void shuffle_shells(void)
 
 static void request_item_scans(void)
 {
-    clear_item_token_ownership_locked();
     for (int p = 0; p < MAX_PLAYERS; p++) {
         if (!game.players[p].active || !game.players[p].alive) {
             game.players[p].pending_item_scans = 0;
             game.players[p].nfc_use_block_until_ms = 0;
             continue;
         }
-        memset(game.players[p].inv, 0, sizeof(game.players[p].inv));
-        game.players[p].pending_item_scans = game.items_per_player < MAX_PLAYER_ITEMS ? game.items_per_player : MAX_PLAYER_ITEMS;
+        uint8_t free_slots = MAX_PLAYER_ITEMS - inventory_count(&game.players[p]);
+        uint8_t scans = game.items_per_player < MAX_PLAYER_ITEMS ? game.items_per_player : MAX_PLAYER_ITEMS;
+        game.players[p].pending_item_scans = scans < free_slots ? scans : free_slots;
         game.players[p].nfc_use_block_until_ms = 0;
     }
 }
@@ -1759,6 +1759,7 @@ static esp_err_t api_start(httpd_req_t *req)
             memset(game.players[i].inv, 0, sizeof(game.players[i].inv));
         }
     }
+    clear_item_token_ownership_locked();
     do {
         game.current = esp_random() % MAX_PLAYERS;
     } while (!game.players[game.current].active);
@@ -2421,6 +2422,8 @@ static void game_task(void *arg)
             cleanup_timeouts_locked();
             if (game.phase == PHASE_ACTIVE) {
                 check_game_over();
+            } else if (game.phase == PHASE_GAME_OVER && (uint32_t)(now - game.phase_started_ms) >= 20000) {
+                game_reset();
             }
             unlock_game();
         }

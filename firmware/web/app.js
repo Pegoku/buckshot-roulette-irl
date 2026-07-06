@@ -317,6 +317,10 @@ function itemNeedsTarget(item) {
   return item === "jammer" || item === "adrenaline";
 }
 
+function itemUseFeedbackText(item) {
+  return item === "glass" || item === "burner" ? "Look at the gun's display." : "Effect applied.";
+}
+
 function setNfcStatus(message) {
   $("nfc").textContent = message;
   $("scanStatus").textContent = message;
@@ -376,7 +380,8 @@ async function finishAdrenalineUse(stealPayload = "") {
   closeAdrenalinePanel();
   await refresh();
   setNfcStatus(`Used Adrenaline`);
-  showFeedback("item used", "Adrenaline", `Stole ${itemLabel(stolenItem)}.`, "item-use");
+  showFeedback("item used", "Adrenaline", stolenItem === "glass" || stolenItem === "burner" ?
+    `Stole ${itemLabel(stolenItem)}. Look at the gun's display.` : `Stole ${itemLabel(stolenItem)}.`, "item-use");
 }
 
 async function handleAdrenalineVerification(payload) {
@@ -433,7 +438,7 @@ async function submitScanPayload(payload, target = selectedTarget) {
     setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` :
       (updatedPendingTotal > 0 ? "Tag accepted. Waiting for others." : "Tag accepted. Item scans complete."));
   } else {
-    showFeedback("item used", info.valid ? itemLabel(info.item) : "Item", "Effect applied.", "item-use");
+    showFeedback("item used", info.valid ? itemLabel(info.item) : "Item", info.valid ? itemUseFeedbackText(info.item) : "Effect applied.", "item-use");
     setNfcStatus(`Used ${info.valid ? itemLabel(info.item) : "item"}`);
   }
 }
@@ -996,7 +1001,7 @@ async function useItemWithTarget(item, target) {
   if (demoMode) {
     $("nfc").textContent = `Used ${itemLabel(item)}`;
     state.message = `${itemLabel(item)} used`;
-    showFeedback("item used", itemLabel(item), "Effect applied.", "item-use");
+    showFeedback("item used", itemLabel(item), itemUseFeedbackText(item), "item-use");
     render();
     return;
   }
@@ -1004,7 +1009,7 @@ async function useItemWithTarget(item, target) {
     await api("/api/item", {pid: playerId, item, target});
     $("nfc").textContent = `Used ${itemLabel(item)}`;
     await refresh();
-    showFeedback("item used", itemLabel(item), "Effect applied.", "item-use");
+    showFeedback("item used", itemLabel(item), itemUseFeedbackText(item), "item-use");
   } catch (e) {
     $("nfc").textContent = e.message;
   }
