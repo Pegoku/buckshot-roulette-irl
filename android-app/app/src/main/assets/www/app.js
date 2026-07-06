@@ -29,6 +29,7 @@ let refreshTimer = null;
 let refreshing = false;
 let lastBeerEjectSeq = 0;
 let beerEjectHideTimer = null;
+let shotFxHideTimer = null;
 let offlineMode = false;
 let lastActionAt = 0;
 
@@ -790,7 +791,8 @@ function renderBeerEject() {
   beerEjectHideTimer = window.setTimeout(hideBeerEject, duration - elapsed + 80);
 }
 
-function playShotEffect(live, playAudio) {
+function playShotEffect(live, playAudio, role = "observer") {
+  showShotVisual(live, role);
   if (window.AndroidApp) {
     window.AndroidApp.vibrate(live ? "55,28,95,32,60" : "38,22,42");
     if (typeof window.AndroidApp.flash === "function") {
@@ -808,6 +810,22 @@ function playShotEffect(live, playAudio) {
   } catch {
     // Audio can still be blocked if the browser has not accepted a gesture yet.
   }
+}
+
+function showShotVisual(live, role) {
+  const panel = $("shotFxPanel");
+  const bullet = $("shotFxBullet");
+  const burst = $("shotFxBurst");
+  if (!panel || !bullet || !burst) return;
+  bullet.src = `images/bullets/${live ? "live" : "blank"}.png`;
+  panel.className = `shot-fx ${role || "observer"} ${live ? "live" : "blank"}`;
+  bullet.style.animation = "none";
+  burst.style.animation = "none";
+  void panel.offsetWidth;
+  bullet.style.animation = "";
+  burst.style.animation = "";
+  if (shotFxHideTimer) window.clearTimeout(shotFxHideTimer);
+  shotFxHideTimer = window.setTimeout(() => panel.classList.add("hidden"), 980);
 }
 
 function syncShotEffect() {
@@ -833,13 +851,17 @@ function syncShotEffect() {
 
   lastShotMsSeen = shotMs;
   const shooter = Number(state.last_shot_shooter);
+  const target = Number(state.last_shot_target);
+  const role = shooter === playerId && target === playerId ? "both" :
+    shooter === playerId ? "shooter" :
+    target === playerId ? "target" : "observer";
   const playAudio = shooter === playerId;
   const phoneDelay = Number(state.shot_phone_delay_ms) || 220;
   const offset = Number.isFinite(state._clockOffsetMs) ? state._clockOffsetMs : Date.now() - serverMillis;
   const targetLocalMs = shotMs + phoneDelay + offset;
   const delay = Math.max(0, Math.min(750, targetLocalMs - Date.now()));
   const live = Boolean(state.last_shot_live);
-  window.setTimeout(() => playShotEffect(live, playAudio), delay);
+  window.setTimeout(() => playShotEffect(live, playAudio, role), delay);
 }
 
 function render() {

@@ -1333,6 +1333,7 @@ static void resolve_shot(void)
     game.last_shot_ms = now_ms();
     game.shot_seq++;
     game.last_shot_shooter = shooter->id;
+    game.last_shot_target = target->id;
     game.last_shot_fx_variant = live ? (esp_random() & 1) : 0;
     uint8_t damage = game.saw_active && live ? 2 : 1;
     bool keep_turn = !live && target->id == shooter->id;
@@ -1389,6 +1390,7 @@ static void game_reset(void)
     game.last_shot_ms = 0;
     game.shot_seq = 0;
     game.last_shot_shooter = -1;
+    game.last_shot_target = -1;
     game.last_shot_fx_variant = 0;
     game.beer_eject_ms = 0;
     game.beer_eject_seq = 0;
@@ -1594,14 +1596,14 @@ static esp_err_t api_state(httpd_req_t *req)
                   "{\"ok\":true,\"millis\":%lu,\"ap\":\"%s\",\"join\":\"%s\",\"phase\":\"%s\",\"message\":\"%s\","
                   "\"you\":%s,\"admin\":%u,\"player_count\":%u,\"current\":%u,\"winner\":%d,\"write_mode\":%s,\"shell_index\":%u,\"shell_count\":%u,"
                   "\"live_remaining\":%u,\"blank_remaining\":%u,\"pending_scan_total\":%u,\"round\":%u,\"round_intro_active\":%s,\"round_intro_elapsed_ms\":%lu,\"round_intro_duration_ms\":%u,"
-                  "\"shot_seq\":%lu,\"last_shot_ms\":%lu,\"last_shot_live\":%s,\"last_shot_shooter\":%d,\"shot_phone_delay_ms\":%u,"
+                  "\"shot_seq\":%lu,\"last_shot_ms\":%lu,\"last_shot_live\":%s,\"last_shot_shooter\":%d,\"last_shot_target\":%d,\"shot_phone_delay_ms\":%u,"
                   "\"beer_eject_seq\":%lu,\"beer_eject_ms\":%lu,\"beer_eject_live\":%s,\"beer_eject_duration_ms\":%u,\"armed_target\":%d,",
                   (unsigned long)server_ms, sta_ip[0] ? sta_ip : STA_WIFI_SSID, join_path, phase_name(game.phase), game.message, known_player ? "true" : "false",
                   game.admin_id, game.player_count, game.current, game.winner,
                   game.nfc_write_mode ? "true" : "false", game.shell_index, game.shell_count, live, blank, pending_total,
                   game.round, round_intro_active ? "true" : "false", (unsigned long)round_intro_elapsed, TFT_ROUND_REVEAL_MS,
                   (unsigned long)game.shot_seq, (unsigned long)game.last_shot_ms, game.last_shot_live ? "true" : "false",
-                  game.last_shot_shooter, PHONE_SHOT_DELAY_MS,
+                  game.last_shot_shooter, game.last_shot_target, PHONE_SHOT_DELAY_MS,
                   (unsigned long)game.beer_eject_seq, (unsigned long)game.beer_eject_ms, game.beer_eject_live ? "true" : "false",
                   BEER_EJECT_ANIM_MS, game.armed_target);
     if (game.armed_target >= 0 && game.armed_target < MAX_PLAYERS && game.players[game.armed_target].active) {
@@ -1740,6 +1742,7 @@ static esp_err_t api_start(httpd_req_t *req)
     game.last_shot_ms = 0;
     game.shot_seq = 0;
     game.last_shot_shooter = -1;
+    game.last_shot_target = -1;
     game.beer_eject_ms = 0;
     game.beer_eject_seq = 0;
     game.beer_eject_live = false;
@@ -2279,7 +2282,7 @@ static void make_ids(void)
     sta_ip[0] = '\0';
     snprintf(join_token, sizeof(join_token), "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
     snprintf(join_path, sizeof(join_path), "/join/%s", join_token);
-    snprintf(join_url, sizeof(join_url), "http://%s", STA_WIFI_SSID);
+    strlcpy(join_url, APP_RELEASE_URL, sizeof(join_url));
 }
 
 static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
@@ -2294,7 +2297,6 @@ static void wifi_event_handler(void *arg, esp_event_base_t event_base, int32_t e
     } else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP) {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         snprintf(sta_ip, sizeof(sta_ip), IPSTR, IP2STR(&event->ip_info.ip));
-        snprintf(join_url, sizeof(join_url), "http://%s%s", sta_ip, join_path);
         ESP_LOGI(TAG, "STA IP: %s", sta_ip);
         mark_display_dirty();
     }
