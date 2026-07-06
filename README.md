@@ -2,13 +2,13 @@
 
 # SoupShot Roulette
 ### (buckshot-roulette-irl)
-recreation of the buckshot roulette using a combination of electronics for Fallout in Shenzhen, this ~~lighthearded~~ very serious project makes sense within the competition's lore.
+Recreation of the buckshot roulette using a combination of electronics for Fallout in Shenzhen, this ~~lighthearded~~ very serious project makes sense within the competition's lore.
 
 # Context:
 
-The world is ending!!! Resources are scarce and there are too many people (🙁) for shelters.
+The world is ending!!! Resources are scarce and there is too many people (🙁) for shelters.
 
-What is the fairest way to reduce population numbers you may ask? By **gambling**, but more fair kind of mostly I mean technically.
+What is the fairest way to reduce population numbers you may ask? By **gambling**, but, more fair... kind of??? mostly; I mean... technically...
 
 Let's make killing each other a mostly lighthearted game (yay!) by referencing the hit videogame _Buckshot Roulette_.
 
@@ -18,7 +18,7 @@ Let's make killing each other a mostly lighthearted game (yay!) by referencing t
 
 - ESP32-S3 N16R8 acting as the gun connected to the button.
 - 2.4" TFT Display (ILI9341, 240x320, spi, landscape).
-- Mifrare ultralight NFC stickers (40 units for this project).
+- Mifrare ultralight NFC stickers (36 units for this project).
 - Android smartphones with a chromium-based web browser to interact with NFC.
 - Button (for the trigger).
 
@@ -38,7 +38,7 @@ The shotgun HUD shows animations and data relevant to the game itself and specif
 
 ### More concrete information (only read if you have doubts):
 
-All players connect to the shotgun (esp32 AP) which is randomized. After connecting, the players will be asked to "sign in" by opening a website and with a camera and be asked to scan the qr code in the shotgun's display. (the first user will be the _admin_ and will be able to set settings like max number of bullets, ratios, etc.). After all players have registered, and the settings are set, the _admin_ will start the game.
+All players connect to the shotgun (esp32) through our app (available in releases). The first user will be the _admin_ and will be able to set settings like max number of bullets, ratios, etc... After all players have registered, and the settings are set, the _admin_ will start the game.
 
 If it's the first round, the shotgun will randomly select a player to be the "shooter", if not, the shooter will be the one who's turn should be according to their previous round.
 All players get the number of items indicated by each phone, and THEY MUST SCAN THEM to be able to use them (safety measure).
