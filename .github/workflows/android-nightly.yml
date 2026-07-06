@@ -61,12 +61,14 @@ jobs:
         working-directory: .
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_NOTES: |
+            Download and install the APK on your device. Then connect your device to the same Wi-Fi network shown on the display and start the game from the admin menu.
+
+            Remember to disconnect mobile data and VPN before playing.
         run: |
           gh release view nightly >/dev/null 2>&1 || gh release create nightly \
             --title "Nightly APK" \
-            --notes "Download and install the APK on your device. Then connect your device to the same Wi-Fi network shown on the display and start the game from the admin menu.
-
-Remember to disconnect mobile data and VPN before playing." \
+            --notes "$RELEASE_NOTES" \
             --prerelease
           gh release upload nightly \
             android-app/app/build/outputs/apk/debug/buckshot-roulette-irl-nightly.apk \
