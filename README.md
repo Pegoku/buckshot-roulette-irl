@@ -51,3 +51,63 @@ If an action is something like a magnifying glass (which indicates something abo
 
 The software is divided into two parts: the gun and the web app.
 All of the code will run in the esp32-S3, which will act as a web server and will serve the web app to the players. The gun will also handle the game logic, including the randomization of the shells and the management of player turns.
+
+## Wiring:
+
+> ![wiring except button](images/wiring-except-button.jpg)
+> Button not pictured due to making the picture much harder to read easily.
+
+These defaults are defined at the top of `firmware/main/main.c`.
+
+| Signal | ESP32-S3 GPIO | Notes |
+| --- | ---: | --- |
+| TFT MOSI | GPIO11 | ILI9341 SDI/MOSI |
+| TFT SCLK | GPIO12 | ILI9341 SCK |
+| TFT CS | GPIO10 | ILI9341 CS |
+| TFT DC | GPIO9 | ILI9341 D/C or RS |
+| TFT RST | GPIO8 | ILI9341 reset |
+| TFT BL | GPIO7 | Backlight enable, active high |
+| TFT MISO | not connected | Not needed |
+| Trigger button | GPIO4 | Button pulls GPIO4 to GND |
+| 3V3 | 3.3 V | Display logic power |
+| GND | GND | Common ground |
+
+Change the `PIN_*` defines in `firmware/main/main.c` if you wish to use a different pinout.
+
+### How to properly assemble:
+
+1. Connect the display VCC to 3.3 V and GND to GND.
+2. Connect the ILI9341 SPI pins using the table above.
+3. Connect the trigger button between GPIO4 and GND.
+4. Leave the trigger GPIO unconnected to VCC.
+
+* If the display stays white, check `CS`, `DC`, `RST`, and `BL` first. 
+* If the display is rotated incorrectly, adjust the `0x36` MADCTL value in `lcd_init()`.
+
+## How to build:
+
+## Commands
+
+Run these from the `firmware/` directory.
+
+Set the target once:
+
+```sh
+idf.py set-target esp32s3
+```
+
+Build:
+
+```sh
+IDF_COMPONENT_CACHE_PATH=/tmp/idf-component-cache idf.py build
+```
+
+Flash app, partition table, and web assets:
+
+```sh
+IDF_COMPONENT_CACHE_PATH=/tmp/idf-component-cache idf.py -p /dev/ttyACM0 flash monitor
+```
+
+If your board appears as a different port, replace `/dev/ttyACM0`. Common alternatives are `/dev/ttyUSB0` and `/dev/ttyACM1`.
+
+Exit the monitor with `Ctrl+]`.
