@@ -46,6 +46,27 @@
       <img id="beerEjectShell" src="images/bullets/blank.png" alt="">
   </div>
 
+  <div id="shotFxPanel" class="shot-fx hidden" aria-hidden="true">
+    <img id="shotFxBullet" class="shot-fx-bullet" src="images/bullets/live.png" alt="">
+    <div id="shotFxBurst" class="shot-fx-burst"></div>
+  </div>
+
+  <div id="feedbackPanel" class="feedback-panel hidden" aria-live="polite">
+    <div class="feedback-card">
+      <p id="feedbackKicker" class="kicker">item</p>
+      <h2 id="feedbackTitle">Item used</h2>
+      <p id="feedbackText" class="message"></p>
+    </div>
+  </div>
+
+  <div id="turnPanel" class="turn-panel hidden" aria-live="assertive">
+    <div class="turn-card">
+      <p class="kicker">turn</p>
+      <h2>Your turn</h2>
+      <p id="turnText" class="message">Choose a target or item.</p>
+    </div>
+  </div>
+
   <div id="endScreenPanel" class="end-screen hidden" role="dialog" aria-modal="true" aria-labelledby="endTitle">
     <div class="end-card">
       <p class="kicker">final result</p>

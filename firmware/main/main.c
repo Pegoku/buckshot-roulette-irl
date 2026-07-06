@@ -42,7 +42,7 @@
 #define LCD_HEIGHT 240
 #define LCD_HOST SPI2_HOST
 #define LCD_MADCTL_LANDSCAPE_180 0xe8
-#define APP_RELEASE_URL "https://github.com/Pegoku/buckshot-roulette-irl/releases/latest"
+#define APP_RELEASE_URL "https://github.com/Pegoku/buckshot-roulette-irl/releases/tag/nightly"
 #define STA_WIFI_SSID "VankeYunCheng"
 #define STA_WIFI_PASSWORD "SJGS6666"
 #define DISCOVERY_PORT 4210
@@ -735,7 +735,7 @@ static void lcd_draw_qr_callback(esp_qrcode_handle_t qrcode)
         total = (qr_size + quiet * 2) * module;
     }
     int x0 = (LCD_WIDTH - total) / 2;
-    int y0 = 56;
+    int y0 = 52;
     lcd_fill_rect(x0, y0, total, total, COLOR_WHITE);
     for (int y = 0; y < qr_size; y++) {
         for (int x = 0; x < qr_size; x++) {
@@ -752,7 +752,7 @@ static void lcd_draw_join_qr(const game_t *snap)
     tft_crt_base(root);
     lv_obj_t *bar = tft_panel(root, 12, 12, LCD_WIDTH - 24, 28, lv_color_hex(0x00ff66), LV_OPA_30);
     lv_obj_set_style_bg_color(bar, lv_color_hex(0x052716), 0);
-    tft_label(bar, sta_ip[0] ? sta_ip : "CONNECTING WIFI", 8, 7, lv_color_hex(0x00ff66), 1);
+    tft_label(bar, sta_ip[0] ? STA_WIFI_SSID : "CONNECTING WIFI", 8, 7, lv_color_hex(0x00ff66), 1);
 
     char players[24];
     snprintf(players, sizeof(players), "P:%u/4", snap->player_count);
@@ -761,10 +761,8 @@ static void lcd_draw_join_qr(const game_t *snap)
         char admin[24];
         snprintf(admin, sizeof(admin), "ADMIN:P%u", snap->admin_id + 1);
         tft_label(root, admin, 206, 212, lv_color_hex(0xffd447), 1);
-    } else {
-        tft_label(root, "SCAN QR", 216, 212, lv_color_hex(0x168f4a), 1);
     }
-    tft_label(root, sta_ip[0] ? "LIVE TERMINAL" : STA_WIFI_SSID, 18, 44, lv_color_hex(0x168f4a), 1);
+    tft_label(root, sta_ip[0] ? sta_ip : STA_WIFI_SSID, 18, 44, lv_color_hex(0x168f4a), 1);
     tft_render_now();
 
     if (!sta_ip[0]) {
