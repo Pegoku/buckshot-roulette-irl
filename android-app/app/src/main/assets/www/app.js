@@ -144,7 +144,7 @@ async function unlockShotAudio() {
 
 function getUiSound(name) {
   if (!uiSounds[name]) {
-    const audio = new Audio(`${audioRoot}${name}.wav`);
+    const audio = new Audio(`${audioRoot}${name}.mp3`);
     audio.preload = "auto";
     audio.volume = 1;
     uiSounds[name] = audio;
