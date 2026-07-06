@@ -1,6 +1,7 @@
 ![zine](zine/zine.png)
 
-# buckshot-roulette-irl
+# Soupshot Roulette
+### (buckshot-roulette-irl)
 recreation of the buckshot roulette using a combination of electronics for Fallout in Shenzhen, this ~~lighthearded~~ very serious project makes sense within the competition's lore.
 
 # Context:
