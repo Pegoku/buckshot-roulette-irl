@@ -42,6 +42,7 @@
 #define LCD_HEIGHT 240
 #define LCD_HOST SPI2_HOST
 #define LCD_MADCTL_LANDSCAPE_180 0xe8
+#define APP_RELEASE_URL "https://github.com/Pegoku/buckshot-roulette-irl/releases/latest"
 #define STA_WIFI_SSID "VankeYunCheng"
 #define STA_WIFI_PASSWORD "SJGS6666"
 #define DISCOVERY_PORT 4210
@@ -147,6 +148,7 @@ typedef struct {
     uint32_t last_shot_ms;
     uint32_t shot_seq;
     int8_t last_shot_shooter;
+    int8_t last_shot_target;
     bool last_shot_live;
     bool last_shot_valid;
     uint8_t last_shot_fx_variant;
@@ -178,7 +180,7 @@ static volatile uint32_t display_version;
 static char sta_ip[16];
 static char join_token[17];
 static char join_path[32];
-static char join_url[64];
+static char join_url[96];
 static const char *DEV_JOIN_PATH = "/join/allow";
 
 static void save_tokens_locked(void);
@@ -1231,7 +1233,7 @@ static void advance_turn(void)
 
 static void shuffle_shells(void)
 {
-    uint8_t live = game.live_shells_setting;
+    uint8_t live = game.round <= 1 ? game.live_shells_setting : (uint8_t)(1 + (esp_random() % (game.max_shells - 1)));
     if (live >= game.max_shells) {
         live = game.max_shells - 1;
     }
