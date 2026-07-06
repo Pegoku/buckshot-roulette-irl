@@ -1,6 +1,6 @@
-# Firmware
+# SoupShot Roulette Firmware
 
-This folder contains the ESP-IDF firmware for the Buckshot Roulette IRL gun. The current implementation is a playable firmware baseline, not just the earlier hardware smoke test.
+This folder contains the ESP-IDF firmware for the SoupShot Roulette gun. The current implementation is a playable firmware baseline, not just the earlier hardware smoke test.
 
 It includes:
 
@@ -97,7 +97,7 @@ Exit the monitor with `Ctrl+]`.
 On boot, the firmware prints:
 
 ```text
-AP SSID: Buckshot-A1B2C3
+AP SSID: SoupShot-A1B2C3
 Join URL: http://192.168.4.1/join/01234567abcdef00
 Secure NFC URL: https://192.168.4.1/join/01234567abcdef00
 ```
@@ -125,13 +125,13 @@ mkdir -p certs
 openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
   -keyout certs/server.key \
   -out certs/server.crt \
-  -subj "/CN=192.168.4.1/O=Buckshot IRL" \
+  -subj "/CN=192.168.4.1/O=SoupShot Roulette" \
   -addext "subjectAltName=IP:192.168.4.1,DNS:buckshot.local"
 ```
 
 Certificate setup flow for NFC:
 
-1. Connect the phone to the Buckshot AP.
+1. Connect the phone to the SoupShot AP.
 2. Open `http://192.168.4.1/`.
 3. Download `buckshot-irl.crt` from the setup page, or open `http://192.168.4.1/cert` directly.
 4. Install it as a CA certificate and trust it for VPN and apps.
@@ -225,9 +225,9 @@ Web NFC only works on supported Android Chrome devices, requires NFC hardware to
 | Item | Current behavior |
 | --- | --- |
 | Adrenaline | Steals the first non-adrenaline item found from the selected target |
-| Beer | Ejects current shell and reveals whether it was live or blank |
+| Soup | Ejects current shell and reveals whether it was live or blank |
 | Burner Phone | Reveals a random future shell |
-| Cigarette Pack | Heals 1 life up to max lives |
+| FireSticks | Heals 1 life up to max lives |
 | Hand Saw | Next live shot deals 2 damage |
 | Inverter | Flips the current shell |
 | Jammer | Selected target skips their next turn |

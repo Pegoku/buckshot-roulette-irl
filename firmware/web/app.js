@@ -161,9 +161,9 @@ function statePath(pid = playerId) {
 function itemLabel(name) {
   return {
     adrenaline: "Adrenaline",
-    beer: "Beer",
+    beer: "Soup",
     burner: "Burner Phone",
-    cigarette: "Cigarette",
+    cigarette: "FireSticks",
     saw: "Hand Saw",
     inverter: "Inverter",
     jammer: "Jammer",
@@ -175,7 +175,7 @@ function itemLabel(name) {
 function itemDescription(name) {
   return {
     adrenaline: "Steal one item from an opponent, verify its tag, and use it immediately.",
-    beer: "Rack out the current shell and reveal whether it was live or blank.",
+    beer: "Sip soup, rack out the current shell, and reveal whether it was live or blank.",
     burner: "Peek at a later shell in the current load.",
     cigarette: "Recover one life, up to the life limit.",
     saw: "The next live shot deals 2 damage.",

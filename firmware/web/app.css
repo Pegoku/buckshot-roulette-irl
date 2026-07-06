@@ -356,15 +356,16 @@ h2 {
 
 .self-avatar {
   position: absolute;
-  right: 16px;
-  top: 72px;
-  width: 176px;
-  height: 176px;
+  right: clamp(12px, 3vw, 28px);
+  bottom: clamp(72px, 15dvh, 124px);
+  width: clamp(92px, 22vmin, 176px);
+  aspect-ratio: 1;
   object-fit: contain;
   image-rendering: pixelated;
   border: 1px solid var(--line);
   background: #060906;
   padding: 4px;
+  pointer-events: none;
 }
 
 .life-cell {
@@ -861,10 +862,10 @@ body.scan-over-round-load .round-load {
   }
 
   .self-avatar {
-    right: 12px;
-    top: 60px;
-    width: 128px;
-    height: 128px;
+    right: clamp(10px, 3vw, 18px);
+    bottom: clamp(58px, 16dvh, 92px);
+    width: clamp(84px, 22vmin, 128px);
+    height: auto;
   }
 
   .life-cell {

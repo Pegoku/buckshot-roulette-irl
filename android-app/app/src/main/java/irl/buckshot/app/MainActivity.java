@@ -365,7 +365,7 @@ public class MainActivity extends Activity {
             runOnUiThread(() -> {
                 IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
                 integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
-                integrator.setPrompt("Scan Buckshot TFT QR");
+                integrator.setPrompt("Scan SoupShot TFT QR");
                 integrator.setBeepEnabled(false);
                 integrator.setOrientationLocked(true);
                 integrator.initiateScan();

@@ -1,6 +1,6 @@
 ![zine](zine/zine.png)
 
-# Soupshot Roulette
+# SoupShot Roulette
 ### (buckshot-roulette-irl)
 recreation of the buckshot roulette using a combination of electronics for Fallout in Shenzhen, this ~~lighthearded~~ very serious project makes sense within the competition's lore.
 
@@ -34,9 +34,9 @@ After all users have scanned all their items, the round will start.
 The user who is the shooter will be prompted take action by scanning an item or shooting. If they scan an item, it will be deducted from their inventory, and will be used.
 Possible actions:
 - Adrenaline: select a player who you want to steal from, grab an item from their inventory and scan it. Then use it immediately. (You cannot steal another adrenaline)
-- Beer: eject the current shell without shooting it and keep your turn. (you'll be shown the type of shell it was (blank of live))
+- Soup: eject the current shell without shooting it and keep your turn. (you'll be shown the type of shell it was (blank of live))
 - Burner Phone: reveal the type/position of a random future shell.
-- Cigarette Pack: heal 1 life.
+- FireSticks: heal 1 life.
 - Hand Saw: next live shot deals 2 damage instead of 1. (cannot be stacked with other hand saws)
 - Inverter: flip the current shell: live becomes blank, blank becomes live. (It won't)
 - Jammer: choose a player; they skip their next turn.

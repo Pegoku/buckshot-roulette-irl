@@ -208,6 +208,10 @@ static const char *item_names[MAX_ITEMS] = {
     "adrenaline", "beer", "burner", "cigarette", "saw", "inverter", "jammer", "glass", "remote",
 };
 
+static const char *item_display_names[MAX_ITEMS] = {
+    "Adrenaline", "Soup", "Burner", "FireSticks", "Saw", "Inverter", "Jammer", "Magnifier", "Remote",
+};
+
 static uint8_t alive_count(void);
 static int next_player_from(int start);
 static void set_message(const char *fmt, ...);
@@ -1919,7 +1923,7 @@ static void apply_item_effect_locked(player_t *p, item_t item, player_t *t)
             game.beer_eject_live = live;
             game.beer_eject_ms = now_ms();
             game.beer_eject_seq++;
-            set_message("Beer ejected a %s", live ? "live" : "blank");
+            set_message("Soup ejected a %s", live ? "live" : "blank");
             if (game.shell_index >= game.shell_count) {
                 reload_if_needed();
                 advance_turn();
@@ -2144,7 +2148,7 @@ static esp_err_t api_scan(httpd_req_t *req)
                 }
             }
         }
-        set_message("%s scanned %s (%u left)", p->name, item_names[item], p->pending_item_scans);
+        set_message("%s scanned %s (%u left)", p->name, item_display_names[item], p->pending_item_scans);
         unlock_game();
         send_json(req, "{\"ok\":true,\"mode\":\"claim\"}");
         return ESP_OK;
@@ -2275,9 +2279,9 @@ static esp_err_t root_handler(httpd_req_t *req)
 {
     const char *html =
         "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
-        "<title>Buckshot IRL</title><body style='font-family:system-ui;background:#111;color:#eee;padding:24px'>"
-        "<h1>Buckshot IRL</h1>"
-        "<p>Use the Buckshot IRL Android app. This device serves API-only HTTP.</p>"
+        "<title>SoupShot Roulette</title><body style='font-family:system-ui;background:#111;color:#eee;padding:24px'>"
+        "<h1>SoupShot Roulette</h1>"
+        "<p>Use the SoupShot Roulette Android app. This device serves API-only HTTP.</p>"
         "</body>";
     httpd_resp_set_type(req, "text/html");
     httpd_resp_send(req, html, HTTPD_RESP_USE_STRLEN);
