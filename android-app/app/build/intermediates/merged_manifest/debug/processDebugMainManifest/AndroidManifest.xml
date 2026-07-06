@@ -20,6 +20,9 @@
         android:name="android.hardware.camera"
         android:required="false" />
     <uses-feature
+        android:name="android.hardware.camera.flash"
+        android:required="false" />
+    <uses-feature
         android:name="android.hardware.nfc"
         android:required="false" />
     <uses-feature
@@ -28,9 +31,6 @@
     <!-- <uses-feature android:name="android.hardware.camera.any"/> -->
     <uses-feature
         android:name="android.hardware.camera.autofocus"
-        android:required="false" />
-    <uses-feature
-        android:name="android.hardware.camera.flash"
         android:required="false" />
     <uses-feature
         android:name="android.hardware.screen.landscape"
@@ -43,7 +43,9 @@
         android:allowBackup="false"
         android:debuggable="true"
         android:extractNativeLibs="false"
-        android:label="Buckshot IRL"
+        android:icon="@drawable/app_icon"
+        android:label="SoupShot Roulette"
+        android:roundIcon="@drawable/app_icon"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="true" >
         <activity

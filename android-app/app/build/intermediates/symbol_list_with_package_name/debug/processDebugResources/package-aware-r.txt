@@ -19,6 +19,7 @@ color zxing_status_text
 color zxing_transparent
 color zxing_viewfinder_laser
 color zxing_viewfinder_mask
+drawable app_icon
 id centerCrop
 id fitCenter
 id fitXY

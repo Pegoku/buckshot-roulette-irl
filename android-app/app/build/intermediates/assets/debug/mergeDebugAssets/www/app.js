@@ -187,9 +187,9 @@ async function api(path, body, retried = false) {
 function itemLabel(name) {
   return {
     adrenaline: "Adrenaline",
-    beer: "Beer",
+    beer: "Soup",
     burner: "Burner Phone",
-    cigarette: "Cigarette",
+    cigarette: "FireSticks",
     saw: "Hand Saw",
     inverter: "Inverter",
     jammer: "Jammer",
@@ -201,7 +201,7 @@ function itemLabel(name) {
 function itemDescription(name) {
   return {
     adrenaline: "Steal one item from an opponent, verify its tag, and use it immediately.",
-    beer: "Rack out the current shell and reveal whether it was live or blank.",
+    beer: "Sip soup, rack out the current shell, and reveal whether it was live or blank.",
     burner: "Peek at a later shell in the current load.",
     cigarette: "Recover one life, up to the life limit.",
     saw: "The next live shot deals 2 damage.",
@@ -543,7 +543,7 @@ function makeDemoState() {
   };
 }
 
-function makeOfflineState(message = "Connect to Buckshot WiFi") {
+function makeOfflineState(message = "Connect to SoupShot WiFi") {
   return {
     ok: true,
     ap: "192.168.4.1",
@@ -558,7 +558,7 @@ function makeOfflineState(message = "Connect to Buckshot WiFi") {
   };
 }
 
-function setOffline(message = "Connect to Buckshot WiFi") {
+function setOffline(message = "Connect to SoupShot WiFi") {
   offlineMode = true;
   if ($("offlineText")) $("offlineText").textContent = `${message}. Use the same WiFi/hotspot, then retry or enter the TFT QR URL/IP.`;
   if ($("offlinePanel")) $("offlinePanel").classList.remove("hidden");
@@ -608,7 +608,7 @@ async function scanOfflineQr() {
 }
 
 async function retryConnection() {
-  if ($("offlineText")) $("offlineText").textContent = "Finding Buckshot ESP32...";
+  if ($("offlineText")) $("offlineText").textContent = "Finding SoupShot ESP32...";
   try {
     await updateEspBaseUrl();
     if ($("offlineText")) $("offlineText").textContent = `Trying ${espBaseUrl}...`;
@@ -793,6 +793,9 @@ function renderBeerEject() {
 function playShotEffect(live, playAudio) {
   if (window.AndroidApp) {
     window.AndroidApp.vibrate(live ? "55,28,95,32,60" : "38,22,42");
+    if (typeof window.AndroidApp.flash === "function") {
+      window.AndroidApp.flash(live ? "0,75,45,110,45,75" : "0,60");
+    }
   } else if ("vibrate" in navigator) {
     navigator.vibrate(live ? [55, 28, 95, 32, 60] : [38, 22, 42]);
   }
@@ -1306,7 +1309,7 @@ async function boot() {
   if (nativeApp) {
     state = makeOfflineState();
     render();
-    setOffline("Connect to Buckshot WiFi");
+    setOffline("Connect to SoupShot WiFi");
     await updateEspBaseUrl();
   }
   try {

@@ -793,6 +793,9 @@ function renderBeerEject() {
 function playShotEffect(live, playAudio) {
   if (window.AndroidApp) {
     window.AndroidApp.vibrate(live ? "55,28,95,32,60" : "38,22,42");
+    if (typeof window.AndroidApp.flash === "function") {
+      window.AndroidApp.flash(live ? "0,75,45,110,45,75" : "0,60");
+    }
   } else if ("vibrate" in navigator) {
     navigator.vibrate(live ? [55, 28, 95, 32, 60] : [38, 22, 42]);
   }

@@ -1,117 +1,134 @@
 -- Merging decision tree log ---
 manifest
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-37:12
-INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-37:12
-INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-37:12
-INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-37:12
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-41:12
+INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-41:12
+INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-41:12
+INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:1-41:12
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:17:1-56:12
 	package
 		INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml
 	android:versionName
 		INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml
+	xmlns:tools
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:2:5-51
 	android:versionCode
 		INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml
 	xmlns:android
 		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:1:11-69
 uses-permission#android.permission.INTERNET
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:2:5-67
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:3:5-67
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:2:22-64
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:3:22-64
 uses-permission#android.permission.ACCESS_NETWORK_STATE
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:3:5-79
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:5-79
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:3:22-76
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:22-76
 uses-permission#android.permission.CHANGE_WIFI_MULTICAST_STATE
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:5-86
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:5-86
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:22-83
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:22-83
 uses-permission#android.permission.CAMERA
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:5-65
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:5-65
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:22:5-65
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:22:5-65
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:22-62
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:22-62
 uses-permission#android.permission.NFC
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:5-62
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:5-62
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:22-59
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:22-59
 uses-permission#android.permission.VIBRATE
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:5-66
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:5-66
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:22-63
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:22-63
 uses-permission#android.permission.WAKE_LOCK
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:5-68
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:5-68
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:22-65
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:22-65
 uses-feature#android.hardware.camera
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:5-85
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:5-85
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:25:5-27:36
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:25:5-27:36
 	android:required
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:58-82
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:58-82
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:19-57
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:19-57
+uses-feature#android.hardware.camera.flash
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:11:5-124
+MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:36:5-38:36
+MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:36:5-38:36
+	android:required
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:11:64-88
+		REJECTED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:38:9-33
+	tools:replace
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:11:89-121
+	android:name
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:11:19-63
 uses-feature#android.hardware.nfc
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:5-82
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:5-82
 	android:required
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:55-79
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:55-79
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:19-54
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:19-54
 application
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:5-36:19
-INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:5-36:19
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:14:5-40:19
+INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:14:5-40:19
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:46:5-54:19
 MERGED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:46:5-54:19
 	android:extractNativeLibs
 		INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml
 	android:label
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:14:9-37
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:18:9-42
+	android:roundIcon
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:17:9-47
+	android:icon
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:16:9-42
 	android:allowBackup
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:13:9-36
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:15:9-36
 	android:theme
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:15:9-40
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:19:9-40
 	android:usesCleartextTraffic
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:16:9-44
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:20:9-44
 activity#irl.buckshot.app.MainActivity
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:17:9-35:20
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:21:9-39:20
 	android:screenOrientation
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:21:13-50
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:25:13-50
 	android:exported
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:20:13-36
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:13-36
 	android:configChanges
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:19:13-74
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:13-74
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:18:13-41
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:22:13-41
 intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:22:13-25:29
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:13-29:29
 action#android.intent.action.MAIN
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:17-69
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:17-69
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:25-66
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:25-66
 category#android.intent.category.LAUNCHER
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:17-77
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:17-77
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:27-74
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:27-74
 intent-filter#action:name:android.nfc.action.NDEF_DISCOVERED+category:name:android.intent.category.DEFAULT+data:mimeType:text/plain
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:13-30:29
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:30:13-34:29
 action#android.nfc.action.NDEF_DISCOVERED
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:17-77
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:31:17-77
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:25-74
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:31:25-74
 category#android.intent.category.DEFAULT
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:17-76
-	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:27-73
-data
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:29:17-55
-	android:mimeType
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:29:23-52
-intent-filter#action:name:android.nfc.action.TAG_DISCOVERED+category:name:android.intent.category.DEFAULT
-ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:31:13-34:29
-action#android.nfc.action.TAG_DISCOVERED
 ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:32:17-76
 	android:name
-		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:32:25-73
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:32:27-73
+data
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:33:17-55
+	android:mimeType
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:33:23-52
+intent-filter#action:name:android.nfc.action.TAG_DISCOVERED+category:name:android.intent.category.DEFAULT
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:35:13-38:29
+action#android.nfc.action.TAG_DISCOVERED
+ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:36:17-76
+	android:name
+		ADDED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:36:25-73
 uses-sdk
 INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
 INJECTED from /home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml
@@ -134,12 +151,6 @@ ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/c
 		ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:35:9-33
 	android:name
 		ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:34:9-57
-uses-feature#android.hardware.camera.flash
-ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:36:5-38:36
-	android:required
-		ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:38:9-33
-	android:name
-		ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:37:9-53
 uses-feature#android.hardware.screen.landscape
 ADDED from [com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:39:5-41:36
 	android:required

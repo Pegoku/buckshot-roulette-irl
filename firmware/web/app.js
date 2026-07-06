@@ -762,7 +762,7 @@ async function refresh() {
 
 function refreshDelayMs() {
   if (demoMode) return 1500;
-  if (state && state.phase === "active" && state.winner < 0) return 300;
+  if (state && state.phase === "active" && state.winner < 0) return 750;
   return 1000;
 }
 

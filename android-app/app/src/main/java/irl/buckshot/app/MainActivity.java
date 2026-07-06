@@ -1,11 +1,16 @@
 package irl.buckshot.app;
 
 import android.annotation.SuppressLint;
+import android.Manifest;
 import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.Context;
+import android.content.pm.PackageManager;
+import android.hardware.camera2.CameraAccessException;
+import android.hardware.camera2.CameraCharacteristics;
+import android.hardware.camera2.CameraManager;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
 import android.nfc.NfcAdapter;
@@ -14,6 +19,8 @@ import android.nfc.tech.Ndef;
 import android.nfc.tech.NdefFormatable;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.webkit.JavascriptInterface;
@@ -44,6 +51,10 @@ public class MainActivity extends Activity {
     private NfcAdapter nfcAdapter;
     private PendingIntent nfcPendingIntent;
     private String pendingWritePayload = "";
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private CameraManager cameraManager;
+    private String torchCameraId;
+    private final Runnable torchOffRunnable = () -> setTorch(false);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +73,7 @@ public class MainActivity extends Activity {
         );
 
         setupWebView();
+        requestCameraPermission();
         handleNfcIntent(getIntent());
     }
 
@@ -296,6 +308,77 @@ public class MainActivity extends Activity {
         return builder.toString();
     }
 
+    private void requestCameraPermission() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) return;
+        requestPermissions(new String[]{Manifest.permission.CAMERA}, 41);
+    }
+
+    private String getTorchCameraId() {
+        if (torchCameraId != null) return torchCameraId;
+        if (!getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA_FLASH)) return "";
+        try {
+            if (cameraManager == null) {
+                cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            }
+            if (cameraManager == null) return "";
+
+            String fallback = "";
+            for (String cameraId : cameraManager.getCameraIdList()) {
+                CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraId);
+                Boolean hasFlash = characteristics.get(CameraCharacteristics.FLASH_INFO_AVAILABLE);
+                if (!Boolean.TRUE.equals(hasFlash)) continue;
+
+                Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
+                if (fallback.isEmpty()) fallback = cameraId;
+                if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
+                    torchCameraId = cameraId;
+                    return torchCameraId;
+                }
+            }
+            torchCameraId = fallback;
+            return torchCameraId;
+        } catch (CameraAccessException | SecurityException ignored) {
+            return "";
+        }
+    }
+
+    private void setTorch(boolean enabled) {
+        String cameraId = getTorchCameraId();
+        if (cameraId.isEmpty()) return;
+        try {
+            if (cameraManager == null) {
+                cameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
+            }
+            if (cameraManager != null) cameraManager.setTorchMode(cameraId, enabled);
+        } catch (CameraAccessException | IllegalArgumentException | SecurityException ignored) {
+        }
+    }
+
+    private void flashTorch(String patternCsv) {
+        String[] parts = patternCsv == null ? new String[0] : patternCsv.split(",");
+        long[] pattern = new long[Math.max(2, parts.length)];
+        for (int i = 0; i < pattern.length; i++) {
+            try {
+                pattern[i] = Long.parseLong(parts[i].trim());
+            } catch (Exception ignored) {
+                pattern[i] = i == 0 ? 0 : 70;
+            }
+            pattern[i] = Math.max(0, Math.min(pattern[i], 250));
+        }
+
+        mainHandler.removeCallbacks(torchOffRunnable);
+        setTorch(false);
+
+        long elapsed = 0;
+        for (int i = 0; i < pattern.length; i++) {
+            elapsed += pattern[i];
+            final boolean enabled = i % 2 == 1;
+            mainHandler.postDelayed(() -> setTorch(enabled), elapsed);
+        }
+        mainHandler.postDelayed(torchOffRunnable, elapsed + 30);
+    }
+
     public class AndroidNfcBridge {
         @JavascriptInterface
         public boolean isAvailable() {
@@ -340,6 +423,11 @@ public class MainActivity extends Activity {
             } else {
                 vibrator.vibrate(pattern, -1);
             }
+        }
+
+        @JavascriptInterface
+        public void flash(String patternCsv) {
+            runOnUiThread(() -> flashTorch(patternCsv));
         }
 
         @JavascriptInterface
