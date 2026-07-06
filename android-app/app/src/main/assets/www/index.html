@@ -55,6 +55,15 @@
     </div>
   </div>
 
+  <div id="offlinePanel" class="offline-panel hidden" role="dialog" aria-modal="true" aria-labelledby="offlineTitle">
+    <div class="offline-card">
+      <p class="kicker">connection</p>
+      <h2 id="offlineTitle">Connect to Buckshot WiFi</h2>
+      <p id="offlineText" class="message">Join the ESP32 access point, then retry.</p>
+      <button id="offlineRetry" class="scan-button" type="button">Retry</button>
+    </div>
+  </div>
+
   <div id="targetDialog" class="popup hidden" role="dialog" aria-modal="true" aria-labelledby="targetTitle">
     <div class="popup-card">
       <div class="popup-head">

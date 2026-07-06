@@ -550,6 +550,39 @@ h2 {
   margin-top: 16px;
 }
 
+.offline-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(2, 6, 4, .96);
+}
+
+.offline-panel.hidden {
+  display: none;
+}
+
+.offline-card {
+  width: min(88vw, 560px);
+  border: 1px solid var(--line);
+  background: rgba(8, 12, 9, .96);
+  box-shadow: inset 0 0 24px rgba(0, 255, 102, .08), 0 0 28px rgba(0, 255, 102, .16);
+  padding: 18px;
+}
+
+.offline-card h2 {
+  color: var(--text);
+  font-size: clamp(18px, 5vw, 34px);
+  line-height: 1.15;
+  margin: 8px 0 12px;
+}
+
+.offline-card .scan-button {
+  margin-top: 16px;
+}
+
 @keyframes beerShellEject {
   0% {
     opacity: 0;

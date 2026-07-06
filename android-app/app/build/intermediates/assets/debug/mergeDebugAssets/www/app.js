@@ -29,10 +29,13 @@ let refreshTimer = null;
 let refreshing = false;
 let lastBeerEjectSeq = 0;
 let beerEjectHideTimer = null;
+let offlineMode = false;
+let lastActionAt = 0;
 
 const nativeApp = Boolean(window.AndroidNfc);
 const espBaseUrl = "http://192.168.4.1";
 const shotSoundSrc = "audio/shotgun.mp3";
+const apiTimeoutMs = 1400;
 let nativeWriteResolve = null;
 
 const $ = (id) => document.getElementById(id);
@@ -140,26 +143,37 @@ async function enterImmersiveMode() {
 async function api(path, body) {
   const requestStartedAt = Date.now();
   const url = nativeApp && path.startsWith("/") ? `${espBaseUrl}${path}` : path;
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), apiTimeoutMs);
   const opts = body ? {
     method: "POST",
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
-    body: new URLSearchParams(body).toString()
-  } : {};
-  const res = await fetch(url, opts);
-  const text = await res.text();
-  const responseAt = Date.now();
-  let data;
+    body: new URLSearchParams(body).toString(),
+    signal: controller.signal,
+    cache: "no-store"
+  } : {signal: controller.signal, cache: "no-store"};
   try {
-    data = JSON.parse(text);
-  } catch {
-    data = {ok: false, error: text || res.statusText};
+    const res = await fetch(url, opts);
+    const text = await res.text();
+    const responseAt = Date.now();
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = {ok: false, error: text || res.statusText};
+    }
+    if (typeof data.millis === "number") {
+      data._clockOffsetMs = Math.round(((requestStartedAt + responseAt) / 2) - data.millis);
+      data._responseAt = responseAt;
+    }
+    if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
+    return data;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("ESP32 did not respond");
+    throw e;
+  } finally {
+    window.clearTimeout(timeout);
   }
-  if (typeof data.millis === "number") {
-    data._clockOffsetMs = Math.round(((requestStartedAt + responseAt) / 2) - data.millis);
-    data._responseAt = responseAt;
-  }
-  if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
-  return data;
 }
 
 function itemLabel(name) {
@@ -479,6 +493,27 @@ function makeOfflineState(message = "Connect to Buckshot WiFi") {
   };
 }
 
+function setOffline(message = "Connect to Buckshot WiFi") {
+  offlineMode = true;
+  if ($("offlineText")) $("offlineText").textContent = `${message}. Join the ESP32 access point, then retry.`;
+  if ($("offlinePanel")) $("offlinePanel").classList.remove("hidden");
+}
+
+function setOnline() {
+  offlineMode = false;
+  if ($("offlinePanel")) $("offlinePanel").classList.add("hidden");
+}
+
+async function retryConnection() {
+  if ($("offlineText")) $("offlineText").textContent = "Trying 192.168.4.1...";
+  try {
+    await refresh();
+    setOnline();
+  } catch (e) {
+    setOffline(e.message);
+  }
+}
+
 function clearSession() {
   localStorage.removeItem("buckshotPlayerId");
   localStorage.removeItem("buckshotAdmin");
@@ -530,6 +565,35 @@ function playerBySlot(slot) {
   if (slot === 0) return state.players.find((p) => p.id === playerId) || null;
   const opponents = state.players.filter((p) => p.id !== playerId);
   return opponents[slot - 1] || null;
+}
+
+function optimisticMessage(message) {
+  if (!state) return;
+  state.message = message;
+  lastActionAt = Date.now();
+  render();
+}
+
+function optimisticStartRound() {
+  if (!state) return;
+  state.phase = "active";
+  state.winner = -1;
+  state.round = Number(state.round) || 1;
+  state.round_intro_active = true;
+  state.round_intro_elapsed_ms = 0;
+  state.message = "Round started";
+  lastActionAt = Date.now();
+  render();
+}
+
+function optimisticUseItem(item) {
+  if (!state) return;
+  const me = state.players.find((p) => p.id === playerId);
+  const idx = items.indexOf(item);
+  if (me && idx >= 0 && me.inv[idx] > 0) me.inv[idx]--;
+  state.message = `${itemLabel(item)} used`;
+  lastActionAt = Date.now();
+  render();
 }
 
 function renderEndScreen() {
@@ -822,6 +886,7 @@ async function refresh() {
     return;
   }
   state = await api(`/api/state?pid=${playerId}`);
+  setOnline();
   if (currentJoinPath() && state.join && !isAllowedJoinPath(currentJoinPath(), state.join)) {
     expireTab();
     return;
@@ -839,8 +904,10 @@ async function refresh() {
 
 function refreshDelayMs() {
   if (demoMode) return 1500;
-  if (state && state.phase === "active" && state.winner < 0) return 300;
-  return 1000;
+  if (offlineMode) return 2500;
+  if (Date.now() - lastActionAt < 2500) return 350;
+  if (state && state.phase === "active" && state.winner < 0) return 750;
+  return 1500;
 }
 
 function scheduleRefreshLoop() {
@@ -856,8 +923,8 @@ async function refreshLoop() {
   refreshing = true;
   try {
     await refresh();
-  } catch {
-    // Keep the local UI alive during transient AP/HTTPS stalls.
+  } catch (e) {
+    if (nativeApp && (!state || offlineMode)) setOffline(e.message);
   } finally {
     refreshing = false;
     scheduleRefreshLoop();
@@ -905,10 +972,13 @@ async function setup() {
 
 async function start() {
   try {
-    await api("/api/start", {pid: playerId});
+    optimisticStartRound();
+    api("/api/start", {pid: playerId}).then(refresh).catch((e) => {
+      $("adminStatus").textContent = e.message;
+      refresh().catch(() => {});
+    });
     $("adminStatus").textContent = "Round started";
     $("adminPanel").classList.add("hidden");
-    await refresh();
   } catch (e) {
     $("adminStatus").textContent = e.message;
   }
@@ -916,10 +986,13 @@ async function start() {
 
 async function reset() {
   try {
-    await api("/api/reset", {pid: playerId});
+    api("/api/reset", {pid: playerId}).then(refresh).catch((e) => {
+      $("adminStatus").textContent = e.message;
+    });
     clearSession();
     $("adminPanel").classList.add("hidden");
-    await refresh();
+    state = makeOfflineState("Game reset. Sign in again");
+    render();
   } catch (e) {
     $("adminStatus").textContent = e.message;
   }
@@ -932,8 +1005,12 @@ async function arm(target) {
     render();
     return;
   }
-  await api("/api/arm", {pid: playerId, target});
-  await refresh();
+  const targetPlayer = state && state.players.find((p) => p.id === target);
+  optimisticMessage(target === playerId ? "barrel turned inward" : `target locked${targetPlayer ? `: ${targetPlayer.name}` : ""}`);
+  api("/api/arm", {pid: playerId, target}).then(refresh).catch((e) => {
+    optimisticMessage(e.message);
+    refresh().catch(() => {});
+  });
 }
 
 async function useItemWithTarget(item, target) {
@@ -944,9 +1021,12 @@ async function useItemWithTarget(item, target) {
     return;
   }
   try {
-    await api("/api/item", {pid: playerId, item, target});
+    optimisticUseItem(item);
+    api("/api/item", {pid: playerId, item, target}).then(refresh).catch((e) => {
+      $("nfc").textContent = e.message;
+      refresh().catch(() => {});
+    });
     $("nfc").textContent = `Used ${itemLabel(item)}`;
-    await refresh();
   } catch (e) {
     $("nfc").textContent = e.message;
   }
@@ -1092,6 +1172,7 @@ $("closeDebug").onclick = () => $("debugPanel").classList.add("hidden");
 $("closeItemInfo").onclick = () => $("itemInfoPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
 $("scanRequired").onclick = scanNfc;
+$("offlineRetry").onclick = retryConnection;
 
 document.addEventListener("pointerdown", enterImmersiveMode);
 document.addEventListener("click", enterImmersiveMode);
@@ -1105,6 +1186,11 @@ document.addEventListener("visibilitychange", () => {
 
 async function boot() {
   await enterImmersiveMode();
+  if (nativeApp) {
+    state = makeOfflineState();
+    render();
+    setOffline("Connect to Buckshot WiFi");
+  }
   try {
     await refresh();
   } catch (e) {
@@ -1112,6 +1198,7 @@ async function boot() {
       state = makeOfflineState(e.message);
       clearSession();
       render();
+      setOffline(e.message);
       return;
     }
     try {
