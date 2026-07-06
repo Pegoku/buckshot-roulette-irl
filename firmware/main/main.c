@@ -41,6 +41,7 @@
 #define LCD_WIDTH 320
 #define LCD_HEIGHT 240
 #define LCD_HOST SPI2_HOST
+#define LCD_MADCTL_LANDSCAPE_180 0xe8
 #define STA_WIFI_SSID "X.factory2.4G"
 #define STA_WIFI_PASSWORD "make0314"
 #define DISCOVERY_PORT 4210
@@ -958,7 +959,7 @@ static void lcd_init(void)
     lcd_cmd(0x3a);
     lcd_data_u8(0x55);
     lcd_cmd(0x36);
-    lcd_data_u8(0x28);
+    lcd_data_u8(LCD_MADCTL_LANDSCAPE_180);
     lcd_cmd(0x11);
     vTaskDelay(pdMS_TO_TICKS(120));
     lcd_cmd(0x29);
