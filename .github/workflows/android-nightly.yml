@@ -1,0 +1,71 @@
+name: Android Nightly APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: android-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Build debug APK
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Rename APK
+        run: cp app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/buckshot-roulette-irl-nightly.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: buckshot-roulette-irl-nightly-apk
+          path: android-app/app/build/outputs/apk/debug/buckshot-roulette-irl-nightly.apk
+          if-no-files-found: error
+
+      - name: Update nightly tag
+        if: github.ref == 'refs/heads/main'
+        working-directory: .
+        run: |
+          git tag --force nightly "$GITHUB_SHA"
+          git push --force origin nightly
+
+      - name: Publish nightly release
+        if: github.ref == 'refs/heads/main'
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view nightly >/dev/null 2>&1 || gh release create nightly \
+            --title "Nightly APK" \
+            --notes "Automated APK build from the latest push to main." \
+            --prerelease
+          gh release upload nightly \
+            android-app/app/build/outputs/apk/debug/buckshot-roulette-irl-nightly.apk \
+            --clobber
