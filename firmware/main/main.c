@@ -41,8 +41,8 @@
 #define LCD_WIDTH 320
 #define LCD_HEIGHT 240
 #define LCD_HOST SPI2_HOST
-#define STA_WIFI_SSID "POCO F7"
-#define STA_WIFI_PASSWORD "skibidiwifi"
+#define STA_WIFI_SSID "X.factory2.4G"
+#define STA_WIFI_PASSWORD "make0314"
 #define DISCOVERY_PORT 4210
 
 #define MAX_PLAYERS 4
@@ -109,6 +109,8 @@ typedef struct {
     uint32_t last_seen_ms;
     uint32_t next_timeout_ms;
     uint32_t nfc_use_block_until_ms;
+    uint32_t session_ip;
+    char session_token[17];
     char name[MAX_NAME_LEN + 1];
     uint8_t inv[MAX_ITEMS];
     uint8_t pending_item_scans;
@@ -992,6 +994,38 @@ static player_t *player_by_id(uint8_t id)
     return &game.players[id];
 }
 
+static uint32_t request_remote_ip(httpd_req_t *req)
+{
+    int fd = httpd_req_to_sockfd(req);
+    struct sockaddr_storage addr;
+    socklen_t len = sizeof(addr);
+    if (fd < 0 || getpeername(fd, (struct sockaddr *)&addr, &len) != 0 || addr.ss_family != AF_INET) {
+        return 0;
+    }
+    return ((struct sockaddr_in *)&addr)->sin_addr.s_addr;
+}
+
+static player_t *player_by_auth_locked(int pid, const char *token, uint32_t remote_ip)
+{
+    if (pid < 0 || pid >= MAX_PLAYERS) {
+        return NULL;
+    }
+    if ((!token || !token[0]) && !remote_ip) {
+        return NULL;
+    }
+    player_t *p = player_by_id((uint8_t)pid);
+    if (!p) {
+        return NULL;
+    }
+    if (token && token[0] && strcmp(p->session_token, token) == 0) {
+        return p;
+    }
+    if (remote_ip && p->session_ip == remote_ip) {
+        return p;
+    }
+    return NULL;
+}
+
 static uint8_t assign_player_color_locked(void)
 {
     bool used[PLAYER_COLOR_COUNT] = {0};
@@ -1397,9 +1431,15 @@ static void game_reset(void)
     set_message("Join from QR URL");
 }
 
-static bool is_admin(int pid)
+static bool is_admin_auth_locked(int pid, const char *token, uint32_t remote_ip)
 {
-    return pid >= 0 && pid < MAX_PLAYERS && game.players[pid].active && game.admin_id == pid;
+    player_t *p = player_by_auth_locked(pid, token, remote_ip);
+    return p && game.admin_id == p->id;
+}
+
+static void make_session_token(char *out, size_t out_size)
+{
+    snprintf(out, out_size, "%08lx%08lx", (unsigned long)esp_random(), (unsigned long)esp_random());
 }
 
 static int clamp_int(int value, int min, int max)
@@ -1492,10 +1532,41 @@ static int query_int(httpd_req_t *req, const char *key, int fallback)
     return atoi(value);
 }
 
+static bool query_get(httpd_req_t *req, const char *key, char *out, size_t out_len)
+{
+    size_t len = httpd_req_get_url_query_len(req) + 1;
+    if (len <= 1 || len > 160) {
+        return false;
+    }
+    char query[160];
+    if (httpd_req_get_url_query_str(req, query, sizeof(query)) != ESP_OK) {
+        return false;
+    }
+    return httpd_query_key_value(query, key, out, out_len) == ESP_OK;
+}
+
 static esp_err_t read_body(httpd_req_t *req, char *buf, size_t len)
 {
-    int total = 0;
-    while (total < req->content_len && total + 1 < len) {
+    if (!buf || len == 0) {
+        return ESP_FAIL;
+    }
+    if (req->content_len + 1 > len) {
+        char discard[64];
+        size_t remaining = req->content_len;
+        while (remaining > 0) {
+            size_t chunk = remaining < sizeof(discard) ? remaining : sizeof(discard);
+            int got = httpd_req_recv(req, discard, chunk);
+            if (got <= 0) {
+                break;
+            }
+            remaining -= got;
+        }
+        buf[0] = '\0';
+        return ESP_FAIL;
+    }
+
+    size_t total = 0;
+    while (total < req->content_len) {
         int got = httpd_req_recv(req, buf + total, len - total - 1);
         if (got <= 0) {
             return ESP_FAIL;
@@ -1560,9 +1631,15 @@ static esp_err_t api_state(httpd_req_t *req)
     char *w = json;
     char *end = json + 4096;
     int pid = query_int(req, "pid", -1);
+    char session_token[24] = "";
+    query_get(req, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     lock_game();
-    update_player_seen_locked(pid);
-    bool known_player = pid >= 0 && pid < MAX_PLAYERS && game.players[pid].active;
+    player_t *authed = player_by_auth_locked(pid, session_token, remote_ip);
+    if (authed) {
+        update_player_seen_locked(pid);
+    }
+    bool known_player = authed != NULL;
     uint8_t live = live_remaining();
     uint8_t blank = game.shell_count - game.shell_index - live;
     uint8_t pending_total = pending_scan_total();
@@ -1613,7 +1690,7 @@ static esp_err_t api_state(httpd_req_t *req)
 
 static esp_err_t api_register(httpd_req_t *req)
 {
-    char body[160], name[MAX_NAME_LEN + 1], json[96];
+    char body[160], name[MAX_NAME_LEN + 1], json[128];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
@@ -1651,14 +1728,18 @@ static esp_err_t api_register(httpd_req_t *req)
     p->lives = game.max_lives;
     p->join_order = game.next_join_order++;
     p->last_seen_ms = now_ms();
+    p->session_ip = request_remote_ip(req);
+    make_session_token(p->session_token, sizeof(p->session_token));
     strlcpy(p->name, name, sizeof(p->name));
     game.player_count++;
     recompute_admin_locked();
     set_message("%s joined", p->name);
     bool admin = game.admin_id == id;
+    char session_token[sizeof(p->session_token)];
+    strlcpy(session_token, p->session_token, sizeof(session_token));
     unlock_game();
 
-    snprintf(json, sizeof(json), "{\"ok\":true,\"pid\":%d,\"admin\":%d}", id, admin ? 1 : 0);
+    snprintf(json, sizeof(json), "{\"ok\":true,\"pid\":%d,\"admin\":%d,\"token\":\"%s\"}", id, admin ? 1 : 0, session_token);
     send_json(req, json);
     return ESP_OK;
 }
@@ -1671,8 +1752,11 @@ static esp_err_t api_setup(httpd_req_t *req)
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     lock_game();
-    if (!is_admin(pid) || game.phase != PHASE_LOBBY) {
+    if (!is_admin_auth_locked(pid, session_token, remote_ip) || game.phase != PHASE_LOBBY) {
         unlock_game();
         send_error(req, "admin only");
         return ESP_OK;
@@ -1701,8 +1785,11 @@ static esp_err_t api_start(httpd_req_t *req)
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     lock_game();
-    if (!is_admin(pid) || game.player_count < 2) {
+    if (!is_admin_auth_locked(pid, session_token, remote_ip) || game.player_count < 2) {
         unlock_game();
         send_error(req, "need admin and 2 players");
         return ESP_OK;
@@ -1755,8 +1842,11 @@ static esp_err_t api_arm(httpd_req_t *req)
     }
     int pid = param_int(body, "pid", -1);
     int target = param_int(body, "target", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     lock_game();
-    player_t *shooter = player_by_id(pid);
+    player_t *shooter = player_by_auth_locked(pid, session_token, remote_ip);
     player_t *t = player_by_id(target);
     if (game.phase != PHASE_ACTIVE || !shooter || !t || !shooter->alive || !t->alive || game.current != pid) {
         unlock_game();
@@ -1936,13 +2026,16 @@ static const char *apply_item_locked(player_t *p, item_t item, int target, item_
 
 static esp_err_t api_item(httpd_req_t *req)
 {
-    char body[280], item_name[24], steal_name[24], steal_payload[64];
+    char body[512], item_name[24], steal_name[24], steal_payload[64];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
     int target = param_int(body, "target", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     param_get(body, "item", item_name, sizeof(item_name));
     param_get(body, "steal", steal_name, sizeof(steal_name));
     param_get(body, "steal_payload", steal_payload, sizeof(steal_payload));
@@ -1950,7 +2043,7 @@ static esp_err_t api_item(httpd_req_t *req)
     item_t steal_item = parse_item(steal_name);
 
     lock_game();
-    player_t *p = player_by_id(pid);
+    player_t *p = player_by_auth_locked(pid, session_token, remote_ip);
     const char *err = apply_item_locked(p, item, target, steal_item, steal_payload);
     if (err) {
         unlock_game();
@@ -1964,20 +2057,23 @@ static esp_err_t api_item(httpd_req_t *req)
 
 static esp_err_t api_scan(httpd_req_t *req)
 {
-    char body[300], payload[64], steal_name[24], steal_payload[64];
+    char body[512], payload[64], steal_name[24], steal_payload[64];
     if (read_body(req, body, sizeof(body)) != ESP_OK) {
         send_error(req, "bad body");
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
     int target = param_int(body, "target", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     param_get(body, "payload", payload, sizeof(payload));
     param_get(body, "steal", steal_name, sizeof(steal_name));
     param_get(body, "steal_payload", steal_payload, sizeof(steal_payload));
     item_t steal_item = parse_item(steal_name);
 
     lock_game();
-    player_t *p = player_by_id(pid);
+    player_t *p = player_by_auth_locked(pid, session_token, remote_ip);
     if (!p) {
         unlock_game();
         send_error(req, "unknown player");
@@ -2084,10 +2180,13 @@ static esp_err_t api_write_token(httpd_req_t *req)
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     param_get(body, "item", item_name, sizeof(item_name));
     item_t item = parse_item(item_name);
     lock_game();
-    if (!is_admin(pid) || item == ITEM_INVALID) {
+    if (!is_admin_auth_locked(pid, session_token, remote_ip) || item == ITEM_INVALID) {
         unlock_game();
         send_error(req, "admin only");
         return ESP_OK;
@@ -2132,8 +2231,11 @@ static esp_err_t api_reset(httpd_req_t *req)
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     lock_game();
-    if (!is_admin(pid)) {
+    if (!is_admin_auth_locked(pid, session_token, remote_ip)) {
         unlock_game();
         send_error(req, "admin only");
         return ESP_OK;
@@ -2152,8 +2254,11 @@ static esp_err_t api_write_mode(httpd_req_t *req)
         return ESP_OK;
     }
     int pid = param_int(body, "pid", -1);
+    char session_token[24] = "";
+    param_get(body, "token", session_token, sizeof(session_token));
+    uint32_t remote_ip = request_remote_ip(req);
     lock_game();
-    if (!is_admin(pid) || game.phase != PHASE_LOBBY) {
+    if (!is_admin_auth_locked(pid, session_token, remote_ip) || game.phase != PHASE_LOBBY) {
         unlock_game();
         send_error(req, "admin lobby only");
         return ESP_OK;
@@ -2239,6 +2344,7 @@ static void start_http_server(void)
     config.uri_match_fn = httpd_uri_match_wildcard;
     config.max_uri_handlers = 20;
     config.lru_purge_enable = true;
+    config.stack_size = 12288;
     httpd_handle_t server = NULL;
     ESP_ERROR_CHECK(httpd_start(&server, &config));
     register_routes(server);

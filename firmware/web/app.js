@@ -29,6 +29,7 @@ let refreshTimer = null;
 let refreshing = false;
 let lastBeerEjectSeq = 0;
 let beerEjectHideTimer = null;
+let playerToken = localStorage.getItem("buckshotPlayerToken") || "";
 
 const shotSoundSrc = "/audio/shotgun.mp3";
 
@@ -127,10 +128,12 @@ async function enterImmersiveMode() {
 
 async function api(path, body) {
   const requestStartedAt = Date.now();
+  const postBody = body ? {...body} : null;
+  if (postBody && postBody.pid !== undefined && playerToken) postBody.token = playerToken;
   const opts = body ? {
     method: "POST",
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
-    body: new URLSearchParams(body).toString()
+    body: new URLSearchParams(postBody).toString()
   } : {};
   const res = await fetch(path, opts);
   const text = await res.text();
@@ -147,6 +150,12 @@ async function api(path, body) {
   }
   if (!res.ok || data.ok === false) throw new Error(data.error || res.statusText);
   return data;
+}
+
+function statePath(pid = playerId) {
+  const params = new URLSearchParams({pid: String(pid)});
+  if (pid >= 0 && playerToken) params.set("token", playerToken);
+  return `/api/state?${params.toString()}`;
 }
 
 function itemLabel(name) {
@@ -396,10 +405,12 @@ function makeDemoState() {
 function clearSession() {
   localStorage.removeItem("buckshotPlayerId");
   localStorage.removeItem("buckshotAdmin");
+  localStorage.removeItem("buckshotPlayerToken");
   localStorage.removeItem("buckshotJoinPath");
   localStorage.removeItem("buckshotPlayerName");
   playerId = -1;
   isAdmin = false;
+  playerToken = "";
   selectedTarget = -1;
   closeAdrenalinePanel();
 }
@@ -733,7 +744,7 @@ async function refresh() {
     render();
     return;
   }
-  state = await api(`/api/state?pid=${playerId}`);
+  state = await api(statePath());
   if (currentJoinPath() && state.join && !isAllowedJoinPath(currentJoinPath(), state.join)) {
     expireTab();
     return;
@@ -783,8 +794,10 @@ async function join() {
     const r = await api("/api/register", {name, join: currentJoinPath()});
     playerId = r.pid;
     isAdmin = r.admin === 1;
+    playerToken = r.token || "";
     localStorage.setItem("buckshotPlayerId", String(playerId));
     localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
+    localStorage.setItem("buckshotPlayerToken", playerToken);
     localStorage.setItem("buckshotPlayerName", name);
     if (state && state.join) localStorage.setItem("buckshotJoinPath", state.join);
     $("joinStatus").textContent = "";
@@ -1008,7 +1021,7 @@ async function boot() {
     await refresh();
   } catch (e) {
     try {
-      state = await api("/api/state?pid=-1");
+      state = await api(statePath(-1));
       state.message = e.message;
       clearSession();
       render();

@@ -1,8 +1,492 @@
 {
     "logs": [
         {
-            "outputFile": "irl.buckshot.app-debug-4:/values_values.arsc.flat",
+            "outputFile": "irl.buckshot.app-debug-5:/values-nl_values-nl.arsc.flat",
             "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-nl/values-nl.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,312",
+                        "endColumns": "58,46,150,111",
+                        "endOffsets": "109,156,307,419"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-ja_values-ja.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-ja/values-ja.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,109,156,256",
+                        "endColumns": "53,46,99,81",
+                        "endOffsets": "104,151,251,333"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-fi_values-fi.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-fi/values-fi.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,321",
+                        "endColumns": "58,46,159,103",
+                        "endOffsets": "109,156,316,420"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-fr_values-fr.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-fr/values-fr.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,327",
+                        "endColumns": "58,46,165,108",
+                        "endOffsets": "109,156,322,431"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-he_values-he.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-he/values-he.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,111,161,296",
+                        "endColumns": "55,49,134,89",
+                        "endOffsets": "106,156,291,381"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-sk_values-sk.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-sk/values-sk.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,315",
+                        "endColumns": "58,46,153,120",
+                        "endOffsets": "109,156,310,431"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-zh-rHK_values-zh-rHK.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-zh-rHK/values-zh-rHK.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,104,151,244",
+                        "endColumns": "48,46,92,69",
+                        "endOffsets": "99,146,239,309"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-sl_values-sl.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-sl/values-sl.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,165,318",
+                        "endColumns": "58,50,152,99",
+                        "endOffsets": "109,160,313,413"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-el_values-el.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-el/values-el.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,311",
+                        "endColumns": "58,46,149,114",
+                        "endOffsets": "109,156,306,421"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-iw_values-iw.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-iw/values-iw.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,111,161,296",
+                        "endColumns": "55,49,134,89",
+                        "endOffsets": "106,156,291,381"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-ar_values-ar.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-ar/values-ar.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,117,167,300",
+                        "endColumns": "61,49,132,109",
+                        "endOffsets": "112,162,295,405"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-th_values-th.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-th/values-th.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,163,281",
+                        "endColumns": "58,48,117,107",
+                        "endOffsets": "109,158,276,384"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-ro_values-ro.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-ro/values-ro.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,166,275",
+                        "endColumns": "58,51,108,116",
+                        "endOffsets": "109,161,270,387"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-eu_values-eu.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-eu/values-eu.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,119,168,316",
+                        "endColumns": "63,48,147,111",
+                        "endOffsets": "114,163,311,423"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-zh-rTW_values-zh-rTW.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-zh-rTW/values-zh-rTW.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,104,151,244",
+                        "endColumns": "48,46,92,69",
+                        "endOffsets": "99,146,239,309"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-ru_values-ru.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-ru/values-ru.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,117,164,306",
+                        "endColumns": "61,46,141,125",
+                        "endOffsets": "112,159,301,427"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-da_values-da.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-da/values-da.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,307",
+                        "endColumns": "58,46,145,109",
+                        "endOffsets": "109,156,302,412"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-ko_values-ko.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-ko/values-ko.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,106,153,260",
+                        "endColumns": "50,46,106,71",
+                        "endOffsets": "101,148,255,327"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-id_values-id.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-id/values-id.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,293",
+                        "endColumns": "58,46,131,108",
+                        "endOffsets": "109,156,288,397"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-tr_values-tr.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-tr/values-tr.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,116,166,313",
+                        "endColumns": "60,49,146,119",
+                        "endOffsets": "111,161,308,428"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-zh-rCN_values-zh-rCN.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-zh-rCN/values-zh-rCN.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,104,151,238",
+                        "endColumns": "48,46,86,68",
+                        "endOffsets": "99,146,233,302"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-uk_values-uk.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-uk/values-uk.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,117,164,306",
+                        "endColumns": "61,46,141,121",
+                        "endOffsets": "112,159,301,423"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-es_values-es.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-es/values-es.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,331",
+                        "endColumns": "58,46,169,135",
+                        "endOffsets": "109,156,326,462"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-ca_values-ca.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-ca/values-ca.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,167,323",
+                        "endColumns": "58,52,155,112",
+                        "endOffsets": "109,162,318,431"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-cs_values-cs.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-cs/values-cs.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,311",
+                        "endColumns": "58,46,149,83",
+                        "endOffsets": "109,156,306,390"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-pl_values-pl.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-pl/values-pl.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,325",
+                        "endColumns": "58,46,163,109",
+                        "endOffsets": "109,156,320,430"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-hi_values-hi.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-hi/values-hi.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,112,163,329",
+                        "endColumns": "56,50,165,102",
+                        "endOffsets": "107,158,324,427"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-hu_values-hu.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-hu/values-hu.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,287",
+                        "endColumns": "58,46,125,115",
+                        "endOffsets": "109,156,282,398"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-pt_values-pt.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-pt/values-pt.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,317",
+                        "endColumns": "58,46,155,106",
+                        "endOffsets": "109,156,312,419"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-it_values-it.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-it/values-it.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,334",
+                        "endColumns": "58,46,172,128",
+                        "endOffsets": "109,156,329,458"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-de_values-de.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-de/values-de.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,333",
+                        "endColumns": "58,46,171,108",
+                        "endOffsets": "109,156,328,437"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values_values.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values/values.xml",
+                    "from": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,38,48,55",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,127,188,252,317,382,436,490,544,603,661,708,757,805,847,896,948,1006,1056,1110,1176,1246,1343,1460,1556,1717,1830,1916,2063,2162,2309,2368,2415,2559,2672,2772,3228,3593",
+                        "endLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,37,47,54,57",
+                        "endColumns": "71,60,63,64,64,53,53,53,58,57,46,48,47,41,48,51,57,49,53,65,69,96,116,95,160,112,85,146,98,146,58,46,143,112,10,22,22,22",
+                        "endOffsets": "122,183,247,312,377,431,485,539,598,656,703,752,800,842,891,943,1001,1051,1105,1171,1241,1338,1455,1551,1712,1825,1911,2058,2157,2304,2363,2410,2554,2667,2767,3223,3588,3712"
+                    },
+                    "to": {
+                        "startLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,42,44,54,61",
+                        "startColumns": "4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4,4",
+                        "startOffsets": "55,127,188,252,317,382,436,490,544,603,661,708,757,805,847,896,948,1006,1056,1110,1176,1246,1343,1460,1556,1717,1830,1916,2063,2162,2309,2368,2415,2559,2984,3084,3540,3905",
+                        "endLines": "2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,43,53,60,63",
+                        "endColumns": "71,60,63,64,64,53,53,53,58,57,46,48,47,41,48,51,57,49,53,65,69,96,116,95,160,112,85,146,98,146,58,46,143,112,10,22,22,22",
+                        "endOffsets": "122,183,247,312,377,431,485,539,598,656,703,752,800,842,891,943,1001,1051,1105,1171,1241,1338,1455,1551,1712,1825,1911,2058,2157,2304,2363,2410,2554,2667,3079,3535,3900,4024"
+                    }
+                },
                 {
                     "source": "/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/res/values/styles.xml",
                     "from": {
@@ -14,12 +498,42 @@
                         "endOffsets": "323"
                     },
                     "to": {
-                        "startLines": "2",
+                        "startLines": "36",
                         "startColumns": "4",
-                        "startOffsets": "55",
-                        "endLines": "7",
+                        "startOffsets": "2672",
+                        "endLines": "41",
                         "endColumns": "12",
-                        "endOffsets": "362"
+                        "endOffsets": "2979"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-bg_values-bg.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-bg/values-bg.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,112,159,311",
+                        "endColumns": "56,46,151,110",
+                        "endOffsets": "107,154,306,417"
+                    }
+                }
+            ]
+        },
+        {
+            "outputFile": "irl.buckshot.app-debug-5:/values-sv_values-sv.arsc.flat",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-sv/values-sv.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,114,161,267",
+                        "endColumns": "58,46,105,113",
+                        "endOffsets": "109,156,262,376"
                     }
                 }
             ]

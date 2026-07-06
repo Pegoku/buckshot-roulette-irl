@@ -17,80 +17,134 @@
 13    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 13-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:5-86
 13-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:4:22-83
-14    <uses-permission android:name="android.permission.NFC" />
-14-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:5-62
-14-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:22-59
-15    <uses-permission android:name="android.permission.VIBRATE" />
-15-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:5-66
-15-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:22-63
-16    <uses-permission android:name="android.permission.WAKE_LOCK" />
-16-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:5-68
-16-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:22-65
-17
-18    <uses-feature
-18-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:5-82
-19        android:name="android.hardware.nfc"
-19-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:19-54
-20        android:required="false" />
-20-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:55-79
-21
-22    <application
-22-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:5-34:19
-23        android:allowBackup="false"
-23-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:11:9-36
-24        android:debuggable="true"
-25        android:extractNativeLibs="false"
-26        android:label="Buckshot IRL"
-26-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:9-37
-27        android:theme="@style/AppTheme"
-27-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:13:9-40
-28        android:usesCleartextTraffic="true" >
-28-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:14:9-44
-29        <activity
-29-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:15:9-33:20
-30            android:name="irl.buckshot.app.MainActivity"
-30-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:16:13-41
-31            android:configChanges="keyboardHidden|orientation|screenSize"
-31-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:17:13-74
-32            android:exported="true"
-32-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:18:13-36
-33            android:screenOrientation="landscape" >
-33-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:19:13-50
-34            <intent-filter>
-34-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:20:13-23:29
-35                <action android:name="android.intent.action.MAIN" />
-35-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:21:17-69
-35-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:21:25-66
-36
-37                <category android:name="android.intent.category.LAUNCHER" />
-37-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:22:17-77
-37-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:22:27-74
-38            </intent-filter>
-39            <intent-filter>
-39-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:13-28:29
-40                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
-40-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:25:17-77
-40-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:25:25-74
+14    <uses-permission android:name="android.permission.CAMERA" />
+14-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:5-65
+14-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:5:22-62
+15    <uses-permission android:name="android.permission.NFC" />
+15-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:5-62
+15-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:6:22-59
+16    <uses-permission android:name="android.permission.VIBRATE" />
+16-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:5-66
+16-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:7:22-63
+17    <uses-permission android:name="android.permission.WAKE_LOCK" />
+17-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:5-68
+17-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:8:22-65
+18
+19    <uses-feature
+19-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:5-85
+20        android:name="android.hardware.camera"
+20-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:19-57
+21        android:required="false" />
+21-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:9:58-82
+22    <uses-feature
+22-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:5-82
+23        android:name="android.hardware.nfc"
+23-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:19-54
+24        android:required="false" />
+24-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:10:55-79
+25    <uses-feature
+25-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:28:5-30:36
+26        android:name="android.hardware.camera.front"
+26-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:29:9-53
+27        android:required="false" /> <!-- TODO replace above two with next line after Android 4.2 -->
+27-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:30:9-33
+28    <!-- <uses-feature android:name="android.hardware.camera.any"/> -->
+29    <uses-feature
+29-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:33:5-35:36
+30        android:name="android.hardware.camera.autofocus"
+30-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:34:9-57
+31        android:required="false" />
+31-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:35:9-33
+32    <uses-feature
+32-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:36:5-38:36
+33        android:name="android.hardware.camera.flash"
+33-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:37:9-53
+34        android:required="false" />
+34-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:38:9-33
+35    <uses-feature
+35-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:39:5-41:36
+36        android:name="android.hardware.screen.landscape"
+36-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:40:9-57
+37        android:required="false" />
+37-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:41:9-33
+38    <uses-feature
+38-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:42:5-44:36
+39        android:name="android.hardware.wifi"
+39-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:43:9-45
+40        android:required="false" />
+40-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:44:9-33
 41
-42                <category android:name="android.intent.category.DEFAULT" />
-42-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:17-76
-42-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:27-73
-43
-44                <data android:mimeType="text/plain" />
-44-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:17-55
-44-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:23-52
-45            </intent-filter>
-46            <intent-filter>
-46-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:29:13-32:29
-47                <action android:name="android.nfc.action.TAG_DISCOVERED" />
-47-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:30:17-76
-47-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:30:25-73
-48
-49                <category android:name="android.intent.category.DEFAULT" />
-49-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:17-76
-49-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:27-73
-50            </intent-filter>
-51        </activity>
-52    </application>
-53
-54</manifest>
+42    <application
+42-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:12:5-36:19
+43        android:allowBackup="false"
+43-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:13:9-36
+44        android:debuggable="true"
+45        android:extractNativeLibs="false"
+46        android:label="Buckshot IRL"
+46-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:14:9-37
+47        android:theme="@style/AppTheme"
+47-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:15:9-40
+48        android:usesCleartextTraffic="true" >
+48-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:16:9-44
+49        <activity
+49-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:17:9-35:20
+50            android:name="irl.buckshot.app.MainActivity"
+50-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:18:13-41
+51            android:configChanges="keyboardHidden|orientation|screenSize"
+51-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:19:13-74
+52            android:exported="true"
+52-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:20:13-36
+53            android:screenOrientation="landscape" >
+53-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:21:13-50
+54            <intent-filter>
+54-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:22:13-25:29
+55                <action android:name="android.intent.action.MAIN" />
+55-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:17-69
+55-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:23:25-66
+56
+57                <category android:name="android.intent.category.LAUNCHER" />
+57-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:17-77
+57-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:24:27-74
+58            </intent-filter>
+59            <intent-filter>
+59-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:26:13-30:29
+60                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
+60-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:17-77
+60-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:27:25-74
+61
+62                <category android:name="android.intent.category.DEFAULT" />
+62-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:17-76
+62-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:27-73
+63
+64                <data android:mimeType="text/plain" />
+64-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:29:17-55
+64-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:29:23-52
+65            </intent-filter>
+66            <intent-filter>
+66-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:31:13-34:29
+67                <action android:name="android.nfc.action.TAG_DISCOVERED" />
+67-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:32:17-76
+67-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:32:25-73
+68
+69                <category android:name="android.intent.category.DEFAULT" />
+69-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:17-76
+69-->/home/pegoku/Media/Projects/Code/GitHub/buckshot-roulette-irl/android-app/app/src/main/AndroidManifest.xml:28:27-73
+70            </intent-filter>
+71        </activity>
+72        <activity
+72-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:47:9-53:63
+73            android:name="com.journeyapps.barcodescanner.CaptureActivity"
+73-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:48:13-74
+74            android:clearTaskOnLaunch="true"
+74-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:49:13-45
+75            android:screenOrientation="sensorLandscape"
+75-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:50:13-56
+76            android:stateNotNeeded="true"
+76-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:51:13-42
+77            android:theme="@style/zxing_CaptureTheme"
+77-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:52:13-54
+78            android:windowSoftInputMode="stateAlwaysHidden" />
+78-->[com.journeyapps:zxing-android-embedded:4.3.0] /home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/AndroidManifest.xml:53:13-60
+79    </application>
+80
+81</manifest>

@@ -581,6 +581,7 @@ h2 {
 
 .offline-card .scan-button {
   margin-top: 16px;
+  width: 100%;
 }
 
 .offline-card .scan-button + .scan-button {

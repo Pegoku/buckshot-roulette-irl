@@ -1,0 +1,19 @@
+{
+    "logs": [
+        {
+            "outputFile": "irl.buckshot.app-mergeDebugResources-3:/values-hi/values-hi.xml",
+            "map": [
+                {
+                    "source": "/home/pegoku/.gradle/caches/9.6.0/transforms/6d25653fac887e963889e68bd46a4e0c/transformed/zxing-android-embedded-4.3.0/res/values-hi/values-hi.xml",
+                    "from": {
+                        "startLines": "2,3,4,5",
+                        "startColumns": "4,4,4,4",
+                        "startOffsets": "55,112,163,329",
+                        "endColumns": "56,50,165,102",
+                        "endOffsets": "107,158,324,427"
+                    }
+                }
+            ]
+        }
+    ]
+}

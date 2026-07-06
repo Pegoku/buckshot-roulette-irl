@@ -34,10 +34,12 @@ let lastActionAt = 0;
 
 const nativeApp = Boolean(window.AndroidNfc);
 let espBaseUrl = localStorage.getItem("buckshotBaseUrl") || "http://192.168.4.1";
+let playerToken = localStorage.getItem("buckshotPlayerToken") || "";
 const shotSoundSrc = "audio/shotgun.mp3";
 const apiTimeoutMs = 1400;
 let nativeWriteResolve = null;
 let nativeDiscoveryResolve = null;
+let nativeQrResolve = null;
 
 const $ = (id) => document.getElementById(id);
 
@@ -146,10 +148,12 @@ async function api(path, body, retried = false) {
   const url = nativeApp && path.startsWith("/") ? `${espBaseUrl}${path}` : path;
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), apiTimeoutMs);
+  const postBody = body ? {...body} : null;
+  if (postBody && postBody.pid !== undefined && playerToken) postBody.token = playerToken;
   const opts = body ? {
     method: "POST",
     headers: {"Content-Type": "application/x-www-form-urlencoded"},
-    body: new URLSearchParams(body).toString(),
+    body: new URLSearchParams(postBody).toString(),
     signal: controller.signal,
     cache: "no-store"
   } : {signal: controller.signal, cache: "no-store"};
@@ -465,6 +469,18 @@ window.onNativeDiscovery = (ok, url) => {
   nativeDiscoveryResolve = null;
 };
 
+window.onNativeQrScan = (ok, text) => {
+  if (!nativeQrResolve) return;
+  nativeQrResolve(ok ? text : "");
+  nativeQrResolve = null;
+};
+
+function statePath(pid = playerId) {
+  const params = new URLSearchParams({pid: String(pid)});
+  if (pid >= 0 && playerToken) params.set("token", playerToken);
+  return `/api/state?${params.toString()}`;
+}
+
 function discoverEsp() {
   if (!window.AndroidApp || !window.AndroidApp.discoverHost) return Promise.resolve("");
   return new Promise((resolve) => {
@@ -482,11 +498,26 @@ function discoverEsp() {
 async function updateEspBaseUrl() {
   const url = await discoverEsp();
   if (url) {
-    espBaseUrl = url;
-    localStorage.setItem("buckshotBaseUrl", url);
+    setEspBaseUrl(url);
     return true;
   }
   return false;
+}
+
+function setEspBaseUrl(url) {
+  if (url && url !== espBaseUrl) clearSession();
+  espBaseUrl = url;
+  localStorage.setItem("buckshotBaseUrl", url);
+}
+
+function scanNativeQr() {
+  if (!window.AndroidApp || !window.AndroidApp.scanQr) {
+    return Promise.reject(new Error("QR scanner unavailable"));
+  }
+  return new Promise((resolve) => {
+    nativeQrResolve = resolve;
+    window.AndroidApp.scanQr();
+  });
 }
 
 function nativeWriteTag(payload) {
@@ -555,11 +586,22 @@ function normalizeEspBaseUrl(value) {
 async function useManualAddress() {
   try {
     const url = normalizeEspBaseUrl($("offlineAddress").value);
-    espBaseUrl = url;
-    localStorage.setItem("buckshotBaseUrl", url);
+    setEspBaseUrl(url);
     if ($("offlineText")) $("offlineText").textContent = `Trying ${url}...`;
     await refresh();
     setOnline();
+  } catch (e) {
+    setOffline(e.message);
+  }
+}
+
+async function scanOfflineQr() {
+  try {
+    if ($("offlineText")) $("offlineText").textContent = "Scanning TFT QR...";
+    const text = await scanNativeQr();
+    if (!text) throw new Error("QR scan cancelled");
+    $("offlineAddress").value = text;
+    await useManualAddress();
   } catch (e) {
     setOffline(e.message);
   }
@@ -580,10 +622,12 @@ async function retryConnection() {
 function clearSession() {
   localStorage.removeItem("buckshotPlayerId");
   localStorage.removeItem("buckshotAdmin");
+  localStorage.removeItem("buckshotPlayerToken");
   localStorage.removeItem("buckshotJoinPath");
   localStorage.removeItem("buckshotPlayerName");
   playerId = -1;
   isAdmin = false;
+  playerToken = "";
   selectedTarget = -1;
   closeAdrenalinePanel();
 }
@@ -948,7 +992,7 @@ async function refresh() {
     render();
     return;
   }
-  state = await api(`/api/state?pid=${playerId}`);
+  state = await api(statePath());
   setOnline();
   if (currentJoinPath() && state.join && !isAllowedJoinPath(currentJoinPath(), state.join)) {
     expireTab();
@@ -1001,8 +1045,10 @@ async function join() {
     const r = await api("/api/register", {name, join: currentJoinPath()});
     playerId = r.pid;
     isAdmin = r.admin === 1;
+    playerToken = r.token || "";
     localStorage.setItem("buckshotPlayerId", String(playerId));
     localStorage.setItem("buckshotAdmin", isAdmin ? "1" : "0");
+    localStorage.setItem("buckshotPlayerToken", playerToken);
     localStorage.setItem("buckshotPlayerName", name);
     localStorage.setItem("buckshotJoinPath", nativeApp ? "/join/allow" : (state && state.join ? state.join : ""));
     $("joinStatus").textContent = "";
@@ -1236,6 +1282,7 @@ $("closeItemInfo").onclick = () => $("itemInfoPanel").classList.add("hidden");
 $("scan").onclick = scanNfc;
 $("scanRequired").onclick = scanNfc;
 $("offlineRetry").onclick = retryConnection;
+$("offlineScanQr").onclick = scanOfflineQr;
 $("offlineUseAddress").onclick = useManualAddress;
 $("offlineAddress").addEventListener("keydown", (event) => {
   if (event.key === "Enter") {
@@ -1273,7 +1320,7 @@ async function boot() {
       return;
     }
     try {
-      state = await api("/api/state?pid=-1");
+      state = await api(statePath(-1));
       state.message = e.message;
       clearSession();
       render();

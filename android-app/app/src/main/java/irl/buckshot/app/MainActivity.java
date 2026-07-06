@@ -25,6 +25,9 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.net.wifi.WifiManager;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
 import java.io.ByteArrayOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -100,6 +103,18 @@ public class MainActivity extends Activity {
         super.onNewIntent(intent);
         setIntent(intent);
         handleNfcIntent(intent);
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
+        if (result != null) {
+            String contents = result.getContents();
+            boolean ok = contents != null && !contents.trim().isEmpty();
+            callJs("window.onNativeQrScan && window.onNativeQrScan(" + ok + "," + jsString(ok ? contents.trim() : "QR scan cancelled") + ")");
+            return;
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 
     private void enableNfcForegroundDispatch() {
@@ -343,6 +358,18 @@ public class MainActivity extends Activity {
                 String url = discoverBuckshotUrl();
                 callJs("window.onNativeDiscovery && window.onNativeDiscovery(" + (!url.isEmpty()) + "," + jsString(url) + ")");
             }, "buckshot-discovery").start();
+        }
+
+        @JavascriptInterface
+        public void scanQr() {
+            runOnUiThread(() -> {
+                IntentIntegrator integrator = new IntentIntegrator(MainActivity.this);
+                integrator.setDesiredBarcodeFormats(IntentIntegrator.QR_CODE);
+                integrator.setPrompt("Scan Buckshot TFT QR");
+                integrator.setBeepEnabled(false);
+                integrator.setOrientationLocked(true);
+                integrator.initiateScan();
+            });
         }
     }
 
