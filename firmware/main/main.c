@@ -1298,7 +1298,8 @@ static void reload_if_needed(void)
         }
         game.round_started_ms = start;
         shuffle_shells();
-        set_message("Shotgun refilled");
+        request_item_scans();
+        set_message("Round %u: scan %u item tags", game.round, pending_scan_total());
     }
 }
 

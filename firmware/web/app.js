@@ -30,9 +30,16 @@ let refreshing = false;
 let lastBeerEjectSeq = 0;
 let beerEjectHideTimer = null;
 let shotFxHideTimer = null;
+let feedbackHideTimer = null;
+let turnHideTimer = null;
+let lastTurnKey = "";
+let lastAliveState = null;
 let playerToken = localStorage.getItem("buckshotPlayerToken") || "";
 
 const shotSoundSrc = "/audio/shotgun.mp3";
+const audioRoot = "/audio/";
+const uiSoundNames = ["item-get", "item-use", "turn", "reload", "death"];
+const uiSounds = {};
 
 const $ = (id) => document.getElementById(id);
 
@@ -119,8 +126,82 @@ async function unlockShotAudio() {
   }
 }
 
+function getUiSound(name) {
+  if (!uiSounds[name]) {
+    const audio = new Audio(`${audioRoot}${name}.wav`);
+    audio.preload = "auto";
+    audio.volume = 1;
+    uiSounds[name] = audio;
+  }
+  return uiSounds[name];
+}
+
+async function unlockUiSounds() {
+  await Promise.all(uiSoundNames.map(async (name) => {
+    const audio = getUiSound(name);
+    try {
+      audio.muted = true;
+      audio.currentTime = 0;
+      await audio.play();
+      audio.pause();
+      audio.currentTime = 0;
+      audio.muted = false;
+    } catch {
+      audio.muted = false;
+    }
+  }));
+}
+
+function playUiSound(name) {
+  try {
+    const audio = getUiSound(name);
+    audio.pause();
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  } catch {
+    // Audio may be blocked until a user gesture unlocks it.
+  }
+}
+
+function showFeedback(kicker, title, text, soundName = "") {
+  const panel = $("feedbackPanel");
+  if (!panel) return;
+  $("feedbackKicker").textContent = kicker;
+  $("feedbackTitle").textContent = title;
+  $("feedbackText").textContent = text;
+  panel.classList.remove("hidden");
+  const card = panel.querySelector(".feedback-card");
+  if (card) {
+    card.style.animation = "none";
+    void card.offsetWidth;
+    card.style.animation = "";
+  }
+  if (soundName) playUiSound(soundName);
+  if (feedbackHideTimer) window.clearTimeout(feedbackHideTimer);
+  feedbackHideTimer = window.setTimeout(() => panel.classList.add("hidden"), 1220);
+}
+
+function showTurnScreen() {
+  const panel = $("turnPanel");
+  if (!panel) return;
+  const me = state && state.players.find((p) => p.id === playerId);
+  $("turnText").textContent = me && Number(me.lives) <= 1 ? "Last life. Choose carefully." : "Choose a target or item.";
+  panel.classList.remove("hidden");
+  const card = panel.querySelector(".turn-card");
+  if (card) {
+    card.style.animation = "none";
+    void card.offsetWidth;
+    card.style.animation = "";
+  }
+  playUiSound("turn");
+  if ("vibrate" in navigator) navigator.vibrate([40, 20, 40]);
+  if (turnHideTimer) window.clearTimeout(turnHideTimer);
+  turnHideTimer = window.setTimeout(() => panel.classList.add("hidden"), 1450);
+}
+
 async function enterImmersiveMode() {
   unlockShotAudio();
+  unlockUiSounds();
   await requestFullscreenMode();
   await lockLandscape();
   await keepAwake();
@@ -286,6 +367,7 @@ window.chooseAdrenalineItem = (item) => {
 
 async function finishAdrenalineUse(stealPayload = "") {
   if (!adrenalineSteal || adrenalineTarget < 0) return;
+  const stolenItem = adrenalineSteal;
   if (adrenalinePayload) {
     await api("/api/scan", {pid: playerId, payload: adrenalinePayload, target: adrenalineTarget, steal: adrenalineSteal, steal_payload: stealPayload});
   } else {
@@ -294,6 +376,7 @@ async function finishAdrenalineUse(stealPayload = "") {
   closeAdrenalinePanel();
   await refresh();
   setNfcStatus(`Used Adrenaline`);
+  showFeedback("item used", "Adrenaline", `Stole ${itemLabel(stolenItem)}.`, "item-use");
 }
 
 async function handleAdrenalineVerification(payload) {
@@ -345,9 +428,12 @@ async function submitScanPayload(payload, target = selectedTarget) {
   const left = updatedMe ? Number(updatedMe.pending_scans) || 0 : 0;
   const updatedPendingTotal = state ? Number(state.pending_scan_total) || 0 : 0;
   if (result.mode === "claim") {
+    showFeedback("item acquired", info.valid ? itemLabel(info.item) : "Item", left > 0 ? `Scan ${left} more.` :
+      (updatedPendingTotal > 0 ? "Waiting for the other players." : "Item scans complete."), "item-get");
     setNfcStatus(left > 0 ? `Tag accepted. Scan ${left} more.` :
       (updatedPendingTotal > 0 ? "Tag accepted. Waiting for others." : "Tag accepted. Item scans complete."));
   } else {
+    showFeedback("item used", info.valid ? itemLabel(info.item) : "Item", "Effect applied.", "item-use");
     setNfcStatus(`Used ${info.valid ? itemLabel(info.item) : "item"}`);
   }
 }
@@ -470,6 +556,15 @@ function renderEndScreen() {
   $("endStart").classList.toggle("hidden", !isAdmin);
 }
 
+function playReloadTicks(total, elapsed, revealMs) {
+  for (let i = 0; i < total; i++) {
+    const tickAt = Math.round((i * revealMs) / total);
+    const delay = tickAt - elapsed;
+    if (delay < -80) continue;
+    window.setTimeout(() => playUiSound("reload"), Math.max(0, delay));
+  }
+}
+
 function renderRoundLoad() {
   const panel = $("roundLoadPanel");
   if (!state || state.phase !== "active" || !state.round_intro_active) {
@@ -503,6 +598,7 @@ function renderRoundLoad() {
     }
     $("roundLoadShells").innerHTML = shells.join("");
     roundLoadKey = key;
+    playReloadTicks(total, elapsed, revealMs);
   }
   $("roundLoadShells").style.setProperty("--round-duration", `${duration}ms`);
   $("roundLoadShells").style.setProperty("--round-offset", `${elapsed}ms`);
@@ -628,12 +724,25 @@ function render() {
     nfcUsePausedUntil = Date.now() + 5000;
   }
   lastPendingScanTotal = pendingScanTotal;
+  if (me) {
+    if (lastAliveState === true && !me.alive) {
+      showFeedback("eliminated", "You died", "Watch the rest of the gamble.", "death");
+    }
+    lastAliveState = Boolean(me.alive);
+  } else {
+    lastAliveState = null;
+  }
   document.body.classList.toggle("dead-player", Boolean(me && !me.alive));
   document.body.classList.toggle("jammed-player", jammed);
   syncShotEffect();
   renderRoundLoad();
   renderBeerEject();
   renderEndScreen();
+  const turnKey = isMyTurn && pendingScanTotal === 0 && !state.round_intro_active
+    ? `${state.round}:${state.current}:${state.shot_seq || 0}`
+    : "";
+  if (turnKey && turnKey !== lastTurnKey) showTurnScreen();
+  lastTurnKey = turnKey;
 
   const turnTitle = $("turnTitle");
   let title = "WAITING";
@@ -887,6 +996,7 @@ async function useItemWithTarget(item, target) {
   if (demoMode) {
     $("nfc").textContent = `Used ${itemLabel(item)}`;
     state.message = `${itemLabel(item)} used`;
+    showFeedback("item used", itemLabel(item), "Effect applied.", "item-use");
     render();
     return;
   }
@@ -894,6 +1004,7 @@ async function useItemWithTarget(item, target) {
     await api("/api/item", {pid: playerId, item, target});
     $("nfc").textContent = `Used ${itemLabel(item)}`;
     await refresh();
+    showFeedback("item used", itemLabel(item), "Effect applied.", "item-use");
   } catch (e) {
     $("nfc").textContent = e.message;
   }
