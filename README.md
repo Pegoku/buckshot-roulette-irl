@@ -25,6 +25,19 @@ Let's make killing each other a mostly lighthearted game (yay!) by referencing t
 
 ## Game flow 
 
+### Tips:
+
+Simply log into the same wifi connection as the ESP32 and download the APK, this will be enough to get the game going.
+
+When actually playing, scan the items to get their effects.
+
+> ![props](images/props.jpg)
+> most of the item props
+
+The shotgun HUD shows animations and data relevant to the game itself and specific items as well, keep it in mind when playing.
+
+### More concrete information (only read if you have doubts):
+
 All players connect to the shotgun (esp32 AP) which is randomized. After connecting, the players will be asked to "sign in" by opening a website and with a camera and be asked to scan the qr code in the shotgun's display. (the first user will be the _admin_ and will be able to set settings like max number of bullets, ratios, etc.). After all players have registered, and the settings are set, the _admin_ will start the game.
 
 If it's the first round, the shotgun will randomly select a player to be the "shooter", if not, the shooter will be the one who's turn should be according to their previous round.
@@ -112,3 +125,12 @@ IDF_COMPONENT_CACHE_PATH=/tmp/idf-component-cache idf.py -p /dev/ttyACM0 flash m
 If your board appears as a different port, replace `/dev/ttyACM0`. Common alternatives are `/dev/ttyUSB0` and `/dev/ttyACM1`.
 
 Exit the monitor with `Ctrl+]`.
+
+
+
+
+# DEMO video:
+
+![demo](demo-soupshot.mp4)
+
+_Made with much love, inspired to create hate :)_
