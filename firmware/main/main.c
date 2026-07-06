@@ -51,7 +51,7 @@
 #define MAX_NAME_LEN 15
 #define MAX_SHELLS 8
 #define MAX_ITEMS 9
-#define MAX_TOKENS 40
+#define MAX_TOKENS 128
 #define MAX_PLAYER_ITEMS 8
 #define PLAYER_COLOR_COUNT 4
 #define BUTTON_POLL_DELAY_TICKS 1
@@ -735,7 +735,7 @@ static void lcd_draw_qr_callback(esp_qrcode_handle_t qrcode)
         total = (qr_size + quiet * 2) * module;
     }
     int x0 = (LCD_WIDTH - total) / 2;
-    int y0 = 52;
+    int y0 = 68;
     lcd_fill_rect(x0, y0, total, total, COLOR_WHITE);
     for (int y = 0; y < qr_size; y++) {
         for (int x = 0; x < qr_size; x++) {
